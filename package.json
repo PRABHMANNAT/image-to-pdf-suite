@@ -1,0 +1,15 @@
+{
+  "name": "ultra-pdf-image-toolkit",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local-first image & PDF utility suite",
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -k -n server,client -c blue,green \"npm --prefix server run dev\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix server run build && npm --prefix client run build",
+    "start": "npm --prefix server run start"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

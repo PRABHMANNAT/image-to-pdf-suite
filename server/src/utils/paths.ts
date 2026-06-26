@@ -1,10 +1,15 @@
 import path from 'path';
 import fs from 'fs';
 
-export const ROOT = path.resolve(__dirname, '..', '..');
-export const UPLOADS_DIR = path.join(ROOT, 'uploads');
-export const OUTPUTS_DIR = path.join(ROOT, 'outputs');
-export const TEMP_DIR = path.join(ROOT, 'temp');
+// On Vercel (and other read-only serverless environments) the only writable
+// location is /tmp.  Locally we keep files next to the server root.
+const IS_SERVERLESS = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const FILE_ROOT = IS_SERVERLESS ? '/tmp' : path.resolve(__dirname, '..', '..');
+
+export const ROOT = FILE_ROOT;
+export const UPLOADS_DIR = path.join(FILE_ROOT, 'uploads');
+export const OUTPUTS_DIR = path.join(FILE_ROOT, 'outputs');
+export const TEMP_DIR = path.join(FILE_ROOT, 'temp');
 
 export function ensureDirs() {
   for (const d of [UPLOADS_DIR, OUTPUTS_DIR, TEMP_DIR]) {

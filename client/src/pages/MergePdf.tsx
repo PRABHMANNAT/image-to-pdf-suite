@@ -16,6 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { FilePlus, GripVertical, FileText, Trash2 } from 'lucide-react';
+import { PDFDocument } from 'pdf-lib';
 import {
   ToolLayout,
   FileDropzone,
@@ -218,7 +219,6 @@ export default function MergePdf() {
     setResult(null);
 
     try {
-      const { PDFDocument } = await import('pdf-lib');
       const out = await PDFDocument.create();
       for (let i = 0; i < entries.length; i++) {
         if (abortRef.current.signal.aborted) throw new Error('Cancelled');

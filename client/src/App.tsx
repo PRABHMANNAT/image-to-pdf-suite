@@ -18,6 +18,7 @@ import PdfPageEditor from './pages/PdfPageEditor';
 import ScanToPdf from './pages/ScanToPdf';
 import RemovePages from './pages/RemovePages';
 import ExtractPages from './pages/ExtractPages';
+import OrganizePdf from './pages/OrganizePdf';
 
 export default function App() {
   return (
@@ -38,7 +39,7 @@ export default function App() {
             <Route path="/tools/split-pdf" element={<SplitPdf />} />
             <Route path="/tools/remove-pages" element={<RemovePages />} />
             <Route path="/tools/extract-pages" element={<ExtractPages />} />
-            <Route path="/tools/organize-pdf" element={<PdfPageEditor />} />
+            <Route path="/tools/organize-pdf" element={<OrganizePdf />} />
             <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 

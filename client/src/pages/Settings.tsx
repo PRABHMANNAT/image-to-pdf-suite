@@ -1,20 +1,24 @@
-import { Trash2, Sun, Moon, Monitor } from 'lucide-react';
+import { Trash2, Sun, Moon, Monitor, RotateCcw } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../lib/theme';
+import { useSettings } from '../lib/settings';
+import { OCR_LANGUAGES, PAGE_SIZES_MM, type PageSizeId, type CompressionLevel } from '../lib/constants';
 import { Badge } from '../components/ui/Badge';
 import { cn } from '../lib/cn';
 
 export default function Settings() {
   const toast = useToast();
-  const { theme, set } = useTheme();
+  const { theme, set: setTheme } = useTheme();
+  const { settings, set, reset } = useSettings();
 
   async function cleanup() {
     try {
       const r = await fetch('/api/temp/cleanup', { method: 'DELETE' });
       if (r.ok) toast('Temporary files cleared', 'success');
       else toast('Failed to clear', 'error');
-    } catch (e: any) {
-      toast(e?.message || 'Failed to clear', 'error');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to clear';
+      toast(msg, 'error');
     }
   }
 
@@ -23,6 +27,17 @@ export default function Settings() {
     { id: 'dark', label: 'Dark', icon: Moon },
   ];
 
+  const pageSizeOptions: { id: PageSizeId; label: string }[] = [
+    { id: 'image', label: 'Match image' },
+    ...(Object.keys(PAGE_SIZES_MM) as (keyof typeof PAGE_SIZES_MM)[]).map((id) => ({
+      id,
+      label: id.toUpperCase(),
+    })),
+    { id: 'custom', label: 'Custom' },
+  ];
+
+  const compressionOptions: CompressionLevel[] = ['low', 'medium', 'high', 'maximum'];
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <header>
@@ -30,10 +45,11 @@ export default function Settings() {
           Settings
         </h1>
         <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Manage theme, defaults, and local storage. Settings are saved on this device.
+          Defaults applied to every tool. Saved on this device.
         </p>
       </header>
 
+      {/* Appearance */}
       <section className="card">
         <div className="flex items-center justify-between">
           <div>
@@ -52,7 +68,7 @@ export default function Settings() {
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => set(opt.id)}
+                onClick={() => setTheme(opt.id)}
                 className={cn(
                   'flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition border',
                   active
@@ -67,22 +83,185 @@ export default function Settings() {
         </div>
       </section>
 
+      {/* PDF defaults */}
+      <section className="card space-y-4">
+        <div>
+          <h2 className="font-semibold">PDF defaults</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Applied to every Image-to-PDF and conversion tool.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="label">Page size</span>
+            <select
+              className="input w-full"
+              value={settings.pdfPageSize}
+              onChange={(e) => set('pdfPageSize', e.target.value as PageSizeId)}
+            >
+              {pageSizeOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Orientation</span>
+            <select
+              className="input w-full"
+              value={settings.pdfOrientation}
+              onChange={(e) => set('pdfOrientation', e.target.value as 'portrait' | 'landscape')}
+            >
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Margin (mm)</span>
+            <input
+              type="number"
+              min={0}
+              max={50}
+              className="input w-full"
+              value={settings.pdfMarginMm}
+              onChange={(e) => set('pdfMarginMm', Number(e.target.value) || 0)}
+            />
+          </label>
+          {settings.pdfPageSize === 'custom' && (
+            <div className="grid grid-cols-2 gap-2 col-span-full">
+              <label className="block">
+                <span className="label">Custom width (mm)</span>
+                <input
+                  type="number"
+                  className="input w-full"
+                  value={settings.pdfCustomWidthMm}
+                  onChange={(e) => set('pdfCustomWidthMm', Number(e.target.value) || 210)}
+                />
+              </label>
+              <label className="block">
+                <span className="label">Custom height (mm)</span>
+                <input
+                  type="number"
+                  className="input w-full"
+                  value={settings.pdfCustomHeightMm}
+                  onChange={(e) => set('pdfCustomHeightMm', Number(e.target.value) || 297)}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Quality */}
+      <section className="card space-y-4">
+        <div>
+          <h2 className="font-semibold">Quality</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Used by image-export and compression tools.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="label">Image quality ({settings.imageQuality})</span>
+            <input
+              type="range"
+              min={10}
+              max={100}
+              step={1}
+              className="w-full accent-brand-600"
+              value={settings.imageQuality}
+              onChange={(e) => set('imageQuality', Number(e.target.value))}
+            />
+          </label>
+          <label className="block">
+            <span className="label">Compression level</span>
+            <select
+              className="input w-full"
+              value={settings.compressionLevel}
+              onChange={(e) => set('compressionLevel', e.target.value as CompressionLevel)}
+            >
+              {compressionOptions.map((c) => (
+                <option key={c} value={c}>
+                  {c[0].toUpperCase() + c.slice(1)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      {/* Output naming */}
+      <section className="card">
+        <h2 className="font-semibold">Output naming</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          Tokens:{' '}
+          <code className="text-[11px]">{'{name}'}</code>,{' '}
+          <code className="text-[11px]">{'{tool}'}</code>,{' '}
+          <code className="text-[11px]">{'{date}'}</code>,{' '}
+          <code className="text-[11px]">{'{time}'}</code>,{' '}
+          <code className="text-[11px]">{'{index}'}</code>.
+        </p>
+        <input
+          className="input w-full mt-3"
+          value={settings.outputNamePattern}
+          onChange={(e) => set('outputNamePattern', e.target.value)}
+        />
+      </section>
+
+      {/* Preview + OCR */}
+      <section className="card space-y-4">
+        <h2 className="font-semibold">Preview &amp; OCR</h2>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="label">Default preview zoom ({Math.round(settings.previewZoom * 100)}%)</span>
+            <input
+              type="range"
+              min={0.5}
+              max={3}
+              step={0.25}
+              className="w-full accent-brand-600"
+              value={settings.previewZoom}
+              onChange={(e) => set('previewZoom', Number(e.target.value))}
+            />
+          </label>
+          <label className="block">
+            <span className="label">OCR language</span>
+            <select
+              className="input w-full"
+              value={settings.ocrLanguage}
+              onChange={(e) => set('ocrLanguage', e.target.value)}
+            >
+              {OCR_LANGUAGES.map((l) => (
+                <option key={l.code} value={l.code}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </section>
+
+      {/* Storage + reset */}
       <section className="card">
         <h2 className="font-semibold">Local storage</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          All processing happens on your computer. Temporary files auto-expire after 1 hour, or clear them now.
+          All processing happens on your computer. Server temp files auto-expire after 1 hour, or clear them now.
         </p>
-        <button className="btn-secondary mt-3" onClick={cleanup}>
-          <Trash2 size={14} /> Clear temp files
-        </button>
-      </section>
-
-      <section className="card">
-        <h2 className="font-semibold">Keyboard shortcuts</h2>
-        <ul className="text-sm text-slate-600 dark:text-slate-400 list-disc pl-5 space-y-1 mt-2">
-          <li>Ctrl/Cmd+K — focus the search box</li>
-          <li>Esc — close popovers</li>
-        </ul>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn-secondary" onClick={cleanup}>
+            <Trash2 size={14} /> Clear temp files
+          </button>
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              reset();
+              toast('Settings reset to defaults', 'success');
+            }}
+          >
+            <RotateCcw size={14} /> Reset all settings
+          </button>
+        </div>
       </section>
     </div>
   );

@@ -1,172 +1,436 @@
-import { useMemo, useState } from 'react';
-import { FileDropzone } from '../components/FileDropzone';
-import { FileList } from '../components/FileList';
-import { ProgressBar } from '../components/ProgressBar';
-import { ToolLayout } from '../components/ToolLayout';
-import { SelectedFile, PageLayout, FitMode } from '../types';
-import { postAndDownload } from '../utils/api';
-import { useToast } from '../hooks/useToast';
-import { Download, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Image as ImageIcon } from 'lucide-react';
+import {
+  ToolLayout,
+  FileDropzone,
+  PreviewViewer,
+  ProcessingPanel,
+  DownloadResult,
+  SortableThumbnailGrid,
+} from '../components/shared';
+import type { AcceptedFile, ProcessingState, ToolResult, SortableThumb } from '../components/shared';
+import { useSettings } from '../lib/settings';
+import {
+  FitMode,
+  ImageToPdfOptions,
+  LayoutMode,
+  ProgressInfo,
+  generatePdfFromImages,
+} from '../lib/imageToPdf';
+import { PageSizeId, PAGE_SIZES_MM } from '../lib/constants';
+import { applyNamePattern } from '../lib/fileUtils';
+import { findTool } from '../lib/tools';
+import { cn } from '../lib/cn';
 
-const ACCEPT = {
-  'image/*': ['.jpg', '.jpeg', '.png', '.webp', '.tif', '.tiff', '.bmp', '.gif'],
+interface ToolState {
+  pageSize: PageSizeId;
+  orientation: 'portrait' | 'landscape' | 'auto';
+  customWidthMm: number;
+  customHeightMm: number;
+  marginPreset: 'none' | 'small' | 'medium' | 'custom';
+  marginMm: number;
+  fit: FitMode;
+  backgroundPreset: 'white' | 'black' | 'custom';
+  backgroundHex: string;
+  quality: 'high' | 'original' | 'compressed';
+  layout: LayoutMode;
+}
+
+const MARGIN_PRESETS: Record<ToolState['marginPreset'], number> = {
+  none: 0,
+  small: 5,
+  medium: 15,
+  custom: 0,
+};
+
+const QUALITY_TO_JPEG: Record<ToolState['quality'], number> = {
+  high: 95,
+  original: 100,
+  compressed: 70,
 };
 
 export default function ImageToPdf() {
-  const [files, setFiles] = useState<SelectedFile[]>([]);
-  const [layout, setLayout] = useState<PageLayout>('image');
-  const [fit, setFit] = useState<FitMode>('fit');
-  const [marginMm, setMarginMm] = useState(0);
-  const [bg, setBg] = useState('#ffffff');
-  const [customW, setCustomW] = useState(210);
-  const [customH, setCustomH] = useState(297);
-  const [quality, setQuality] = useState(100);
+  const tool = findTool('image-to-pdf')!;
+  const { settings } = useSettings();
+  const [files, setFiles] = useState<AcceptedFile[]>([]);
+  const [state, setState] = useState<ProcessingState>('idle');
   const [progress, setProgress] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const toast = useToast();
+  const [message, setMessage] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
+  const [result, setResult] = useState<ToolResult | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const totalSize = useMemo(() => files.reduce((n, f) => n + f.file.size, 0), [files]);
+  const [opts, setOpts] = useState<ToolState>(() => ({
+    pageSize: settings.pdfPageSize,
+    orientation: 'auto',
+    customWidthMm: settings.pdfCustomWidthMm,
+    customHeightMm: settings.pdfCustomHeightMm,
+    marginPreset:
+      settings.pdfMarginMm === 0
+        ? 'none'
+        : settings.pdfMarginMm === 5
+          ? 'small'
+          : settings.pdfMarginMm === 15
+            ? 'medium'
+            : 'custom',
+    marginMm: settings.pdfMarginMm,
+    fit: 'contain',
+    backgroundPreset: 'white',
+    backgroundHex: '#ffffff',
+    quality: 'high',
+    layout: 'single',
+  }));
 
-  function addFiles(list: File[]) {
-    const next: SelectedFile[] = list.map((f) => ({
-      id: Math.random().toString(36).slice(2),
-      file: f,
-      url: URL.createObjectURL(f),
+  const previewBlob = useMemo(() => (result?.kind === 'single' ? result.blob : null), [result]);
+
+  const thumbs: SortableThumb[] = useMemo(
+    () =>
+      files.map((f) => ({
+        id: f.id,
+        src: f.url || f.thumbUrl || '',
+        label: f.file.name,
+        size: f.file.size,
+      })),
+    [files],
+  );
+
+  function onReorder(next: SortableThumb[]): void {
+    const byId = new Map(files.map((f) => [f.id, f]));
+    setFiles(next.map((n) => byId.get(n.id)).filter((x): x is AcceptedFile => Boolean(x)));
+  }
+
+  function onRemove(id: string): void {
+    setFiles((prev) => {
+      const target = prev.find((f) => f.id === id);
+      if (target?.url) URL.revokeObjectURL(target.url);
+      return prev.filter((f) => f.id !== id);
+    });
+  }
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  function setMargin(preset: ToolState['marginPreset']): void {
+    setOpts((o) => ({
+      ...o,
+      marginPreset: preset,
+      marginMm: preset === 'custom' ? o.marginMm : MARGIN_PRESETS[preset],
     }));
-    setFiles((prev) => [...prev, ...next]);
   }
 
-  function removeFile(id: string) {
-    setFiles((p) => p.filter((f) => f.id !== id));
-  }
-  function moveFile(id: string, dir: -1 | 1) {
-    setFiles((p) => {
-      const i = p.findIndex((f) => f.id === id);
-      if (i < 0) return p;
-      const j = i + dir;
-      if (j < 0 || j >= p.length) return p;
-      const copy = [...p];
-      [copy[i], copy[j]] = [copy[j], copy[i]];
-      return copy;
-    });
-  }
-  function sortBy(mode: 'upload' | 'az' | 'za') {
-    setFiles((p) => {
-      const copy = [...p];
-      if (mode === 'az') copy.sort((a, b) => a.file.name.localeCompare(b.file.name));
-      else if (mode === 'za') copy.sort((a, b) => b.file.name.localeCompare(a.file.name));
-      return copy;
-    });
+  function setBackground(preset: ToolState['backgroundPreset']): void {
+    setOpts((o) => ({
+      ...o,
+      backgroundPreset: preset,
+      backgroundHex: preset === 'white' ? '#ffffff' : preset === 'black' ? '#000000' : o.backgroundHex,
+    }));
   }
 
-  async function exportPdf() {
-    if (!files.length) return toast('Select at least one image', 'error');
-    const form = new FormData();
-    files.forEach((f) => form.append('files', f.file, f.file.name));
-    form.append('layout', layout);
-    form.append('fit', fit);
-    form.append('marginMm', String(marginMm));
-    form.append('background', bg);
-    form.append('jpegQuality', String(quality));
-    if (layout === 'custom') {
-      form.append('customWidth', String(customW));
-      form.append('customHeight', String(customH));
-    }
-    setBusy(true);
+  async function run(): Promise<void> {
+    if (!files.length) return;
+    abortRef.current = new AbortController();
+    setState('processing');
     setProgress(0);
+    setMessage('Reading images…');
+    setError(undefined);
+    setResult(null);
+
+    const pdfOpts: ImageToPdfOptions = {
+      pageSize: opts.pageSize,
+      orientation: opts.orientation,
+      customWidthMm: opts.customWidthMm,
+      customHeightMm: opts.customHeightMm,
+      marginMm: opts.marginMm,
+      fit: opts.fit,
+      backgroundHex: opts.backgroundHex,
+      jpegQuality: QUALITY_TO_JPEG[opts.quality],
+      layout: opts.layout,
+    };
+
     try {
-      await postAndDownload('/api/images/to-pdf', form, 'images.pdf', setProgress);
-      toast('PDF downloaded', 'success');
-    } catch (e: any) {
-      toast(e.message || 'Failed', 'error');
-    } finally {
-      setBusy(false);
-      setProgress(0);
+      const blob = await generatePdfFromImages(
+        files.map((f) => f.file),
+        pdfOpts,
+        (info: ProgressInfo) => {
+          setProgress(info.pct);
+          setMessage(info.message);
+        },
+        abortRef.current.signal,
+      );
+      const baseName = files[0]?.file.name || 'images';
+      const suggested = applyNamePattern(settings.outputNamePattern, {
+        name: baseName,
+        tool: 'image-to-pdf',
+        ext: '.pdf',
+      });
+      setResult({ kind: 'single', blob, suggestedName: suggested });
+      setState('success');
+      setMessage(`Created a ${files.length}-image PDF.`);
+    } catch (e) {
+      if (abortRef.current?.signal.aborted) {
+        setState('idle');
+        setMessage(undefined);
+        return;
+      }
+      setState('error');
+      setError(e instanceof Error ? e.message : String(e));
     }
   }
 
-  // Rough estimate: sum of input sizes - actual PDF often within 2x.
-  const estMb = (totalSize / (1024 * 1024)).toFixed(1);
+  function reset(): void {
+    abortRef.current?.abort();
+    setState('idle');
+    setResult(null);
+    setProgress(0);
+    setMessage(undefined);
+    setError(undefined);
+  }
 
   return (
     <ToolLayout
-      title="Image to PDF"
-      description="Convert any number of images into a single high-resolution PDF. Default mode preserves maximum quality."
-    >
-      <FileDropzone onFiles={addFiles} accept={ACCEPT} label="Drop images (JPG, PNG, WEBP, TIFF, BMP, GIF)" />
-
-      {files.length > 0 && (
-        <div className="mt-6 grid lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-slate-600 dark:text-slate-300">
-                {files.length} files • {estMb} MB total
-                {Number(estMb) > 200 && (
-                  <span className="ml-2 text-amber-600">Large output PDF possible.</span>
-                )}
+      title={tool.name}
+      description={tool.description}
+      icon={ImageIcon}
+      runtime={tool.runtime}
+      status={tool.status}
+      layout="split"
+      upload={
+        <FileDropzone
+          files={files}
+          onChange={setFiles}
+          accept="image"
+          multiple
+          maxFiles={500}
+          hideZoneWhenFilled={files.length > 0}
+          label="Drop images or click to add"
+          helperText="JPG, PNG, WEBP, GIF, TIFF, BMP — all processed locally."
+        />
+      }
+      preview={
+        <div className="space-y-4">
+          {files.length > 0 && (
+            <section className="card space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Drag to reorder · {files.length} images</h3>
               </div>
-              <div className="flex gap-2">
-                <button className="btn-ghost" onClick={() => sortBy('az')}>A-Z</button>
-                <button className="btn-ghost" onClick={() => sortBy('za')}>Z-A</button>
-                <button className="btn-ghost text-red-600" onClick={() => setFiles([])}>
-                  <Trash2 size={14} /> Clear all
-                </button>
-              </div>
-            </div>
-            <FileList files={files} onRemove={removeFile} onMove={moveFile} />
-          </div>
-          <div className="card space-y-4 h-fit">
-            <div>
-              <label className="label">Page layout</label>
-              <select className="input w-full" value={layout} onChange={(e) => setLayout(e.target.value as PageLayout)}>
-                <option value="image">Same size as image (max quality)</option>
-                <option value="a4-portrait">A4 portrait</option>
-                <option value="a4-landscape">A4 landscape</option>
-                <option value="letter-portrait">Letter portrait</option>
-                <option value="letter-landscape">Letter landscape</option>
-                <option value="custom">Custom</option>
-              </select>
-            </div>
-            {layout === 'custom' && (
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">Width (mm)</label>
-                  <input type="number" className="input w-full" value={customW} onChange={(e) => setCustomW(+e.target.value)} />
-                </div>
-                <div>
-                  <label className="label">Height (mm)</label>
-                  <input type="number" className="input w-full" value={customH} onChange={(e) => setCustomH(+e.target.value)} />
-                </div>
-              </div>
-            )}
-            <div>
-              <label className="label">Image fit</label>
-              <select className="input w-full" value={fit} onChange={(e) => setFit(e.target.value as FitMode)}>
-                <option value="fit">Fit inside page</option>
-                <option value="fill">Fill page (crop)</option>
-                <option value="stretch">Stretch</option>
-                <option value="original">Original size</option>
-              </select>
-            </div>
-            <div>
-              <label className="label">Margin (mm)</label>
-              <input type="number" className="input w-full" value={marginMm} onChange={(e) => setMarginMm(+e.target.value)} />
-            </div>
-            <div>
-              <label className="label">Background</label>
-              <input type="color" className="w-full h-9" value={bg} onChange={(e) => setBg(e.target.value)} />
-            </div>
-            <div>
-              <label className="label">JPEG quality (1-100)</label>
-              <input type="number" min={1} max={100} className="input w-full" value={quality} onChange={(e) => setQuality(+e.target.value)} />
-            </div>
-            {busy && <ProgressBar value={progress} label={`Uploading... ${progress}%`} />}
-            <button className="btn-primary w-full" onClick={exportPdf} disabled={busy}>
-              <Download size={16} /> Create PDF
-            </button>
-          </div>
+              <SortableThumbnailGrid items={thumbs} onReorder={onReorder} onRemove={onRemove} />
+            </section>
+          )}
+          {result?.kind === 'single' && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Generated PDF preview</h3>
+              <PreviewViewer source={previewBlob} type="pdf" />
+            </section>
+          )}
         </div>
-      )}
-    </ToolLayout>
+      }
+      options={
+        <section className="card space-y-4">
+          <h3 className="text-sm font-semibold">Page setup</h3>
+          <label className="block">
+            <span className="label">Page size</span>
+            <select
+              className="input w-full"
+              value={opts.pageSize}
+              onChange={(e) => setOpts({ ...opts, pageSize: e.target.value as PageSizeId })}
+            >
+              <option value="image">Match image</option>
+              {(Object.keys(PAGE_SIZES_MM) as (keyof typeof PAGE_SIZES_MM)[]).map((id) => (
+                <option key={id} value={id}>
+                  {id.toUpperCase()}
+                </option>
+              ))}
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          {opts.pageSize === 'custom' && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="label">Width (mm)</span>
+                <input
+                  type="number"
+                  className="input w-full"
+                  value={opts.customWidthMm}
+                  onChange={(e) => setOpts({ ...opts, customWidthMm: Number(e.target.value) || 210 })}
+                />
+              </label>
+              <label className="block">
+                <span className="label">Height (mm)</span>
+                <input
+                  type="number"
+                  className="input w-full"
+                  value={opts.customHeightMm}
+                  onChange={(e) => setOpts({ ...opts, customHeightMm: Number(e.target.value) || 297 })}
+                />
+              </label>
+            </div>
+          )}
+          <label className="block">
+            <span className="label">Orientation</span>
+            <div className="flex gap-1.5">
+              {(['portrait', 'landscape', 'auto'] as const).map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => setOpts({ ...opts, orientation: o })}
+                  className={cn(
+                    'flex-1 px-2 py-1.5 rounded-md text-xs font-medium border transition capitalize',
+                    opts.orientation === o
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {o}
+                </button>
+              ))}
+            </div>
+          </label>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4">
+            <h3 className="text-sm font-semibold">Margins</h3>
+            <div className="mt-2 flex gap-1.5 flex-wrap">
+              {(['none', 'small', 'medium', 'custom'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMargin(m)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-medium border transition capitalize',
+                    opts.marginPreset === m
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            {opts.marginPreset === 'custom' && (
+              <input
+                type="number"
+                min={0}
+                max={50}
+                className="input w-full mt-2"
+                value={opts.marginMm}
+                onChange={(e) => setOpts({ ...opts, marginMm: Number(e.target.value) || 0 })}
+              />
+            )}
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4">
+            <h3 className="text-sm font-semibold">Image fit</h3>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              {(['contain', 'cover', 'stretch', 'actual'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setOpts({ ...opts, fit: f })}
+                  className={cn(
+                    'px-2 py-1.5 rounded-md text-xs font-medium border transition capitalize',
+                    opts.fit === f
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4">
+            <h3 className="text-sm font-semibold">Background</h3>
+            <div className="mt-2 flex gap-2 items-center">
+              {(['white', 'black', 'custom'] as const).map((b) => (
+                <button
+                  key={b}
+                  type="button"
+                  onClick={() => setBackground(b)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md text-xs font-medium border transition capitalize',
+                    opts.backgroundPreset === b
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {b}
+                </button>
+              ))}
+              {opts.backgroundPreset === 'custom' && (
+                <input
+                  type="color"
+                  className="h-8 w-10 rounded cursor-pointer"
+                  value={opts.backgroundHex}
+                  onChange={(e) => setOpts({ ...opts, backgroundHex: e.target.value })}
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4">
+            <h3 className="text-sm font-semibold">Quality</h3>
+            <div className="mt-2 flex gap-1.5">
+              {(['high', 'original', 'compressed'] as const).map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => setOpts({ ...opts, quality: q })}
+                  className={cn(
+                    'flex-1 px-2 py-1.5 rounded-md text-xs font-medium border transition capitalize',
+                    opts.quality === q
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+              JPG/PNG bytes pass through unchanged for high/original.
+            </p>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-4">
+            <h3 className="text-sm font-semibold">Layout</h3>
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {(['single', '2x1', '1x2', '2x2', '3x3'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setOpts({ ...opts, layout: l })}
+                  className={cn(
+                    'px-2 py-1.5 rounded-md text-xs font-medium border transition',
+                    opts.layout === l
+                      ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {l === 'single' ? '1 / page' : `${l} grid`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      }
+      action={
+        <ProcessingPanel
+          files={files}
+          state={state}
+          progress={progress}
+          message={message}
+          error={error}
+          onAction={run}
+          actionLabel="Create PDF"
+          actionDisabled={!files.length}
+          onCancel={() => abortRef.current?.abort()}
+          onReset={reset}
+        />
+      }
+      result={<DownloadResult result={result} onReset={reset} />}
+    />
   );
 }

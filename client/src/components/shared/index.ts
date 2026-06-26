@@ -9,4 +9,6 @@ export { ToolLayout } from './ToolLayout';
 export { ImageCropper } from './ImageCropper';
 export { SortableThumbnailGrid } from './SortableThumbnailGrid';
 export type { SortableThumb } from './SortableThumbnailGrid';
+export { PdfPageGrid } from './PdfPageGrid';
+export type { SelectablePage, EditablePage, Rotation } from './PdfPageGrid';
 export type { AcceptedFile, DropError, ProcessingState, SingleResult, ManyResult, ToolResult } from './types';

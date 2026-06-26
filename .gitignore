@@ -9,3 +9,4 @@ server/uploads/
 server/outputs/
 server/temp/
 client/dist/
+*.tsbuildinfo

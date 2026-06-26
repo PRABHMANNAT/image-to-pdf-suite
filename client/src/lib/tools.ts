@@ -98,7 +98,7 @@ export const TOOLS: Tool[] = [
   { id: 'remove-pages', name: 'Remove Pages', description: 'Delete one or more pages from a PDF.', route: '/tools/remove-pages', category: 'organize', icon: FileMinus, runtime: 'browser', status: 'ready' },
   { id: 'extract-pages', name: 'Extract Pages', description: 'Pull selected pages into a new PDF.', route: '/tools/extract-pages', category: 'organize', icon: FileOutput, runtime: 'browser', status: 'ready' },
   { id: 'organize-pdf', name: 'Organize PDF', description: 'Reorder, rotate and delete pages visually.', route: '/tools/organize-pdf', category: 'organize', icon: ListOrdered, runtime: 'browser', status: 'ready' },
-  { id: 'scan-to-pdf', name: 'Scan to PDF', description: 'Capture pages from your camera and export a PDF.', route: '/tools/scan-to-pdf', category: 'organize', icon: ScanLine, runtime: 'browser', status: 'coming-soon' },
+  { id: 'scan-to-pdf', name: 'Scan to PDF', description: 'Clean up phone-scanned pages and export a tidy PDF.', route: '/tools/scan-to-pdf', category: 'organize', icon: ScanLine, runtime: 'browser', status: 'beta' },
 
   // Optimize PDF
   { id: 'compress-pdf', name: 'Compress PDF', description: 'Reduce PDF size with quality controls.', route: '/tools/compress-pdf', category: 'optimize', icon: Minimize2, runtime: 'hybrid', status: 'coming-soon' },

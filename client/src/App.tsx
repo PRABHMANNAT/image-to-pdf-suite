@@ -15,6 +15,7 @@ import CropImage from './pages/CropImage';
 import MergePdf from './pages/MergePdf';
 import SplitPdf from './pages/SplitPdf';
 import PdfPageEditor from './pages/PdfPageEditor';
+import ScanToPdf from './pages/ScanToPdf';
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
             <Route path="/tools/extract-pages" element={<PdfPageEditor />} />
             <Route path="/tools/organize-pdf" element={<PdfPageEditor />} />
             <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
+            <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 
             {/* Catch-all tool route — renders the placeholder for any coming-soon tool. */}
             <Route path="/tools/:toolId" element={<PlaceholderPage />} />

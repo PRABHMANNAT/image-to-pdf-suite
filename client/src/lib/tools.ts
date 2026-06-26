@@ -101,7 +101,7 @@ export const TOOLS: Tool[] = [
   { id: 'scan-to-pdf', name: 'Scan to PDF', description: 'Clean up phone-scanned pages and export a tidy PDF.', route: '/tools/scan-to-pdf', category: 'organize', icon: ScanLine, runtime: 'browser', status: 'beta' },
 
   // Optimize PDF
-  { id: 'compress-pdf', name: 'Compress PDF', description: 'Reduce PDF size with quality controls.', route: '/tools/compress-pdf', category: 'optimize', icon: Minimize2, runtime: 'hybrid', status: 'coming-soon' },
+  { id: 'compress-pdf', name: 'Compress PDF', description: 'Reduce PDF size with quality controls.', route: '/tools/compress-pdf', category: 'optimize', icon: Minimize2, runtime: 'hybrid', status: 'ready' },
   { id: 'repair-pdf', name: 'Repair PDF', description: 'Recover and rebuild a damaged PDF.', route: '/tools/repair-pdf', category: 'optimize', icon: Wrench, runtime: 'backend', status: 'coming-soon' },
   { id: 'ocr-pdf', name: 'OCR PDF', description: 'Make scanned PDFs searchable with on-device OCR.', route: '/tools/ocr-pdf', category: 'optimize', icon: ScanText, runtime: 'hybrid', status: 'coming-soon' },
 

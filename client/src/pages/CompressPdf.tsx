@@ -1,0 +1,258 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Minimize2, Info } from 'lucide-react';
+import {
+  ToolLayout,
+  FileDropzone,
+  PreviewViewer,
+  ProcessingPanel,
+  DownloadResult,
+} from '../components/shared';
+import type { AcceptedFile, ProcessingState, ToolResult } from '../components/shared';
+import {
+  CompressPreset,
+  PRESET_LABEL,
+  PRESET_RASTERISE,
+  compressPdf,
+} from '../lib/pdfCompress';
+import { applyNamePattern, humanSize } from '../lib/fileUtils';
+import { useSettings } from '../lib/settings';
+import { findTool } from '../lib/tools';
+import { cn } from '../lib/cn';
+
+export default function CompressPdf() {
+  const tool = findTool('compress-pdf')!;
+  const { settings } = useSettings();
+  const [files, setFiles] = useState<AcceptedFile[]>([]);
+  const file = files[0] ?? null;
+  const [preset, setPreset] = useState<CompressPreset>('medium');
+  const [lossless, setLossless] = useState(false);
+  const [customDpi, setCustomDpi] = useState(150);
+  const [customQuality, setCustomQuality] = useState(0.78);
+  const [state, setState] = useState<ProcessingState>('idle');
+  const [progress, setProgress] = useState(0);
+  const [message, setMessage] = useState<string | undefined>();
+  const [error, setError] = useState<string | undefined>();
+  const [result, setResult] = useState<ToolResult | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
+  const originalSize = file?.file.size ?? 0;
+  const outSize = result?.kind === 'single' ? result.blob.size : 0;
+  const saving = originalSize > 0 && outSize > 0 ? 1 - outSize / originalSize : 0;
+
+  const expected = useMemo(() => {
+    // Very rough heuristic for the "estimated size" hint — true size is only
+    // known once we actually compress. We just give the user a ballpark.
+    if (!originalSize) return null;
+    if (lossless || preset === 'low') return originalSize * 0.85;
+    if (preset === 'medium') return originalSize * 0.45;
+    if (preset === 'high') return originalSize * 0.22;
+    // custom: estimate from DPI + quality
+    const dpiFactor = Math.min(1, customDpi / 200);
+    return originalSize * Math.max(0.1, dpiFactor * customQuality);
+  }, [originalSize, preset, lossless, customDpi, customQuality]);
+
+  async function run(): Promise<void> {
+    if (!file) return;
+    abortRef.current = new AbortController();
+    setState('processing');
+    setError(undefined);
+    setResult(null);
+    setProgress(0);
+    setMessage(lossless ? 'Re-saving (lossless)…' : 'Rasterising pages…');
+
+    try {
+      const blob = await compressPdf(
+        file.file,
+        { preset, lossless, customDpi, customQuality },
+        (info) => {
+          setProgress(info.pct);
+          if (info.message) setMessage(info.message);
+        },
+        abortRef.current.signal,
+      );
+      const name = applyNamePattern(settings.outputNamePattern, {
+        name: file.file.name.replace(/\.pdf$/i, ''),
+        tool: 'compressed',
+        ext: '.pdf',
+      });
+      setResult({ kind: 'single', blob, suggestedName: name });
+      setMessage(`${humanSize(file.file.size)} → ${humanSize(blob.size)} (${Math.round((1 - blob.size / file.file.size) * 100)}% smaller)`);
+      setState('success');
+    } catch (e) {
+      if (abortRef.current?.signal.aborted) {
+        setState('idle');
+        return;
+      }
+      setState('error');
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function reset(): void {
+    abortRef.current?.abort();
+    setState('idle');
+    setResult(null);
+    setProgress(0);
+    setMessage(undefined);
+    setError(undefined);
+  }
+
+  const previewBlob = result?.kind === 'single' ? result.blob : null;
+
+  return (
+    <ToolLayout
+      title={tool.name}
+      description={tool.description}
+      icon={Minimize2}
+      runtime={tool.runtime}
+      status={tool.status}
+      layout="split"
+      upload={
+        <FileDropzone
+          files={files}
+          onChange={setFiles}
+          accept="pdf"
+          multiple={false}
+          hideZoneWhenFilled={files.length > 0}
+          label="Drop a PDF to compress"
+          helperText="Compression runs entirely on this device."
+        />
+      }
+      preview={
+        <div className="space-y-4">
+          {file && (
+            <section className="card">
+              <h3 className="text-sm font-semibold">Size</h3>
+              <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                <div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Original</div>
+                  <div className="tabular-nums font-semibold">{humanSize(originalSize)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Estimated</div>
+                  <div className="tabular-nums font-semibold text-brand-600 dark:text-brand-300">
+                    ~ {expected ? humanSize(expected) : '—'}
+                  </div>
+                </div>
+                {outSize > 0 && (
+                  <div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Actual</div>
+                    <div className="tabular-nums font-semibold text-emerald-600 dark:text-emerald-300">
+                      {humanSize(outSize)}
+                      {saving > 0 && <span className="ml-1 text-xs">(−{Math.round(saving * 100)}%)</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
+          {previewBlob && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2">Compressed PDF preview</h3>
+              <PreviewViewer source={previewBlob} type="pdf" />
+            </section>
+          )}
+        </div>
+      }
+      options={
+        <section className="card space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">Compression preset</h3>
+            <div className="mt-2 grid grid-cols-1 gap-1.5">
+              {(Object.keys(PRESET_LABEL) as CompressPreset[]).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPreset(p)}
+                  className={cn(
+                    'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                    preset === p
+                      ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {PRESET_LABEL[p]}
+                  {p !== 'custom' && (
+                    <span className="ml-2 text-[10px] text-slate-500 dark:text-slate-400 font-normal">
+                      {PRESET_RASTERISE[p].dpi} dpi · q{Math.round(PRESET_RASTERISE[p].quality * 100)}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {preset === 'custom' && (
+            <div className="space-y-2">
+              <label className="block">
+                <span className="label">Render DPI ({customDpi})</span>
+                <input
+                  type="range"
+                  min={72}
+                  max={300}
+                  step={1}
+                  value={customDpi}
+                  onChange={(e) => setCustomDpi(Number(e.target.value))}
+                  className="w-full accent-brand-600"
+                />
+              </label>
+              <label className="block">
+                <span className="label">JPEG quality ({Math.round(customQuality * 100)}%)</span>
+                <input
+                  type="range"
+                  min={0.1}
+                  max={1}
+                  step={0.01}
+                  value={customQuality}
+                  onChange={(e) => setCustomQuality(Number(e.target.value))}
+                  className="w-full accent-brand-600"
+                />
+              </label>
+            </div>
+          )}
+
+          <label className="flex items-start gap-2 border-t border-slate-200 dark:border-white/10 pt-3 text-sm">
+            <input
+              type="checkbox"
+              checked={lossless}
+              onChange={(e) => setLossless(e.target.checked)}
+              className="accent-brand-600 mt-0.5"
+            />
+            <span>
+              <span className="font-medium">Preserve text (lossless)</span>
+              <span className="block text-[11px] text-slate-500 dark:text-slate-400">
+                Skips rasterisation and just re-saves the PDF with object streams. Smaller savings, but text and vector graphics stay sharp.
+              </span>
+            </span>
+          </label>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-3 text-[11px] text-slate-500 dark:text-slate-400 flex gap-2">
+            <Info size={14} className="shrink-0 mt-0.5 text-brand-500" />
+            <p>
+              This is the best compression achievable in the browser. Deeper savings (font subsetting, content-aware downsampling) require Ghostscript on a backend — that path will appear automatically once the backend is detected.
+            </p>
+          </div>
+        </section>
+      }
+      action={
+        <ProcessingPanel
+          files={files}
+          state={state}
+          progress={progress}
+          message={message}
+          error={error}
+          onAction={run}
+          actionLabel="Compress"
+          actionDisabled={!file}
+          onCancel={() => abortRef.current?.abort()}
+          onReset={reset}
+        />
+      }
+      result={<DownloadResult result={result} onReset={reset} />}
+    />
+  );
+}

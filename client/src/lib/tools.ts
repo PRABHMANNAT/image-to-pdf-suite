@@ -107,9 +107,9 @@ export const TOOLS: Tool[] = [
 
   // Convert to PDF
   { id: 'jpg-to-pdf', name: 'JPG to PDF', description: 'Convert JPG images into a PDF document.', route: '/tools/jpg-to-pdf', category: 'convert-to', icon: FileImage, runtime: 'browser', status: 'ready' },
-  { id: 'word-to-pdf', name: 'Word to PDF', description: 'Convert .docx documents into PDF.', route: '/tools/word-to-pdf', category: 'convert-to', icon: FileType, runtime: 'backend', status: 'coming-soon' },
-  { id: 'ppt-to-pdf', name: 'PowerPoint to PDF', description: 'Convert .pptx decks into PDF.', route: '/tools/ppt-to-pdf', category: 'convert-to', icon: Presentation, runtime: 'backend', status: 'coming-soon' },
-  { id: 'excel-to-pdf', name: 'Excel to PDF', description: 'Convert .xlsx workbooks into PDF.', route: '/tools/excel-to-pdf', category: 'convert-to', icon: Sheet, runtime: 'backend', status: 'coming-soon' },
+  { id: 'word-to-pdf', name: 'Word to PDF', description: 'Convert .docx documents into PDF via LibreOffice headless.', route: '/tools/word-to-pdf', category: 'convert-to', icon: FileType, runtime: 'backend', status: 'beta' },
+  { id: 'ppt-to-pdf', name: 'PowerPoint to PDF', description: 'Convert .pptx decks into PDF via LibreOffice headless.', route: '/tools/ppt-to-pdf', category: 'convert-to', icon: Presentation, runtime: 'backend', status: 'beta' },
+  { id: 'excel-to-pdf', name: 'Excel to PDF', description: 'Convert .xlsx workbooks into PDF via LibreOffice headless.', route: '/tools/excel-to-pdf', category: 'convert-to', icon: Sheet, runtime: 'backend', status: 'beta' },
   { id: 'html-to-pdf', name: 'HTML to PDF', description: 'Render an HTML page or URL into PDF.', route: '/tools/html-to-pdf', category: 'convert-to', icon: Globe, runtime: 'browser', status: 'coming-soon' },
 
   // Convert from PDF

@@ -22,6 +22,7 @@ import OrganizePdf from './pages/OrganizePdf';
 import CompressPdf from './pages/CompressPdf';
 import RepairPdf from './pages/RepairPdf';
 import OcrPdf from './pages/OcrPdf';
+import OfficeToPdf from './pages/OfficeToPdf';
 
 export default function App() {
   return (
@@ -46,6 +47,9 @@ export default function App() {
             <Route path="/tools/compress-pdf" element={<CompressPdf />} />
             <Route path="/tools/repair-pdf" element={<RepairPdf />} />
             <Route path="/tools/ocr-pdf" element={<OcrPdf />} />
+            <Route path="/tools/word-to-pdf" element={<OfficeToPdf toolId="word-to-pdf" />} />
+            <Route path="/tools/ppt-to-pdf" element={<OfficeToPdf toolId="ppt-to-pdf" />} />
+            <Route path="/tools/excel-to-pdf" element={<OfficeToPdf toolId="excel-to-pdf" />} />
             <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 

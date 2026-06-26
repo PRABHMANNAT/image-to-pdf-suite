@@ -103,7 +103,7 @@ export const TOOLS: Tool[] = [
   // Optimize PDF
   { id: 'compress-pdf', name: 'Compress PDF', description: 'Reduce PDF size with quality controls.', route: '/tools/compress-pdf', category: 'optimize', icon: Minimize2, runtime: 'hybrid', status: 'ready' },
   { id: 'repair-pdf', name: 'Repair PDF', description: 'Recover and rebuild a damaged PDF.', route: '/tools/repair-pdf', category: 'optimize', icon: Wrench, runtime: 'hybrid', status: 'beta' },
-  { id: 'ocr-pdf', name: 'OCR PDF', description: 'Make scanned PDFs searchable with on-device OCR.', route: '/tools/ocr-pdf', category: 'optimize', icon: ScanText, runtime: 'hybrid', status: 'coming-soon' },
+  { id: 'ocr-pdf', name: 'OCR PDF', description: 'Make scanned PDFs searchable with on-device OCR.', route: '/tools/ocr-pdf', category: 'optimize', icon: ScanText, runtime: 'hybrid', status: 'beta' },
 
   // Convert to PDF
   { id: 'jpg-to-pdf', name: 'JPG to PDF', description: 'Convert JPG images into a PDF document.', route: '/tools/jpg-to-pdf', category: 'convert-to', icon: FileImage, runtime: 'browser', status: 'ready' },

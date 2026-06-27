@@ -128,7 +128,7 @@ export const TOOLS: Tool[] = [
   { id: 'pdf-forms', name: 'PDF Forms', description: 'Auto-detect AcroForm fields, fill in the browser, optionally flatten.', route: '/tools/pdf-forms', category: 'edit', icon: FormInput, runtime: 'browser', status: 'beta' },
 
   // PDF Security
-  { id: 'unlock-pdf', name: 'Unlock PDF', description: 'Remove the password from a PDF you own.', route: '/tools/unlock-pdf', category: 'security', icon: LockOpen, runtime: 'hybrid', status: 'coming-soon' },
+  { id: 'unlock-pdf', name: 'Unlock PDF', description: 'Remove the password from a PDF you own — qpdf lossless or browser rasterise fallback.', route: '/tools/unlock-pdf', category: 'security', icon: LockOpen, runtime: 'hybrid', status: 'beta' },
   { id: 'protect-pdf', name: 'Protect PDF', description: 'Encrypt with 256-bit AES via qpdf — set passwords and restrict print/copy/edit.', route: '/tools/protect-pdf', category: 'security', icon: Lock, runtime: 'backend', status: 'beta' },
   { id: 'sign-pdf', name: 'Sign PDF', description: 'Place a typed, drawn or image signature.', route: '/tools/sign-pdf', category: 'security', icon: PenLine, runtime: 'browser', status: 'coming-soon' },
   { id: 'redact-pdf', name: 'Redact PDF', description: 'Permanently black-out sensitive areas.', route: '/tools/redact-pdf', category: 'security', icon: EyeOff, runtime: 'browser', status: 'coming-soon' },

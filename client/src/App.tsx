@@ -38,6 +38,10 @@ import PdfForms from './pages/PdfForms';
 import ProtectPdf from './pages/ProtectPdf';
 import UnlockPdf from './pages/UnlockPdf';
 import SignPdf from './pages/SignPdf';
+import RedactPdf from './pages/RedactPdf';
+import ComparePdf from './pages/ComparePdf';
+import AiSummarizer from './pages/AiSummarizer';
+import TranslatePdf from './pages/TranslatePdf';
 
 export default function App() {
   return (
@@ -80,6 +84,10 @@ export default function App() {
             <Route path="/tools/protect-pdf" element={<ProtectPdf />} />
             <Route path="/tools/unlock-pdf" element={<UnlockPdf />} />
             <Route path="/tools/sign-pdf" element={<SignPdf />} />
+            <Route path="/tools/redact-pdf" element={<RedactPdf />} />
+            <Route path="/tools/compare-pdf" element={<ComparePdf />} />
+            <Route path="/tools/ai-summarize" element={<AiSummarizer />} />
+            <Route path="/tools/translate-pdf" element={<TranslatePdf />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 
             {/* Catch-all tool route — renders the placeholder for any coming-soon tool. */}

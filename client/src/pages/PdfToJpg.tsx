@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileImage } from 'lucide-react';
+import { FileImage, Server, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   ToolLayout,
   FileDropzone,
@@ -13,11 +13,14 @@ import { parsePageRange } from '../lib/pageRange';
 import { canvasToBlob } from '../lib/imageUtils';
 import { applyNamePattern } from '../lib/fileUtils';
 import { useSettings } from '../lib/settings';
+import { useCapabilities } from '../lib/capabilities';
+import { postBackendPdf } from '../lib/backendPdf';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
 
 type Scale = 1 | 2 | 3 | 4;
 type Format = 'image/jpeg' | 'image/png' | 'image/webp';
+type EngineMode = 'backend' | 'browser';
 
 const SCALE_LABEL: Record<Scale, string> = {
   1: '1× (~72 dpi)',
@@ -41,8 +44,10 @@ const FORMAT_EXT: Record<Format, string> = {
 export default function PdfToJpg() {
   const tool = findTool('pdf-to-jpg')!;
   const { settings } = useSettings();
+  const caps = useCapabilities();
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const file = files[0] ?? null;
+  const [engine, setEngine] = useState<EngineMode>('browser');
   const [scale, setScale] = useState<Scale>(2);
   const [format, setFormat] = useState<Format>('image/jpeg');
   const [quality, setQuality] = useState(0.92);
@@ -80,6 +85,11 @@ export default function PdfToJpg() {
     return () => abortRef.current?.abort();
   }, []);
 
+  const popplerAvailable = caps.status === 'ready' && caps.caps.poppler.available;
+  useEffect(() => {
+    if (popplerAvailable) setEngine('backend');
+  }, [popplerAvailable]);
+
   async function run(): Promise<void> {
     if (!file) return;
     abortRef.current = new AbortController();
@@ -90,6 +100,41 @@ export default function PdfToJpg() {
     setMessage('Loading PDF…');
 
     try {
+      if (engine === 'backend') {
+        const targets = pageRange.trim()
+          ? parsePageRange(pageRange, pageCount || 99999).map((i) => i + 1)
+          : [];
+        const firstPage = targets.length ? Math.min(...targets) : undefined;
+        const lastPage = targets.length ? Math.max(...targets) : undefined;
+        const backendFormat = format === 'image/jpeg' ? 'jpg' : format === 'image/png' ? 'png' : 'png';
+        const blob = await postBackendPdf('/api/backend/pdf/to-images', file.file, {
+          signal: abortRef.current.signal,
+          fields: {
+            format: backendFormat,
+            dpi: String(scale * 72),
+            ...(firstPage ? { firstPage: String(firstPage) } : {}),
+            ...(lastPage ? { lastPage: String(lastPage) } : {}),
+          },
+          onUploadProgress: (pct) => {
+            setProgress(Math.min(95, pct));
+            if (pct >= 100) setMessage('Rendering with Poppler...');
+          },
+        });
+        setResult({
+          kind: 'single',
+          blob,
+          suggestedName: applyNamePattern(settings.outputNamePattern, {
+            name: file.file.name.replace(/\.pdf$/i, ''),
+            tool: 'pdf-to-images',
+            ext: '.zip',
+          }),
+        });
+        setProgress(100);
+        setMessage('Exported images with Poppler.');
+        setState('success');
+        return;
+      }
+
       const doc = await loadPdfJs(file.file);
       const total = doc.numPages;
       const targets = pageRange.trim()
@@ -186,7 +231,7 @@ export default function PdfToJpg() {
           multiple={false}
           hideZoneWhenFilled={files.length > 0}
           label="Drop a PDF"
-          helperText="Pages will render in the browser via pdf.js."
+          helperText={popplerAvailable ? 'Poppler backend is available for native PDF rendering.' : 'Pages will render in the browser via pdf.js.'}
         />
       }
       preview={
@@ -196,6 +241,19 @@ export default function PdfToJpg() {
               <h3 className="font-semibold">{file.file.name}</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 {pageCount ? `${pageCount} pages` : 'Reading…'}
+              </p>
+            </section>
+          )}
+          {caps.status === 'ready' && (
+            <section className={cn(
+              'card text-sm flex items-start gap-2',
+              popplerAvailable
+                ? 'border-emerald-300/60 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                : 'border-amber-300/60 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300',
+            )}>
+              {popplerAvailable ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}
+              <p className="text-xs">
+                {popplerAvailable ? 'Poppler detected. Backend export returns a ZIP of rendered images.' : 'Poppler not detected. Browser rendering remains available.'}
               </p>
             </section>
           )}
@@ -209,6 +267,39 @@ export default function PdfToJpg() {
       }
       options={
         <section className="card space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">Engine</h3>
+            <div className="mt-2 grid grid-cols-1 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEngine('backend')}
+                disabled={!popplerAvailable}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'backend'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  !popplerAvailable && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                <Server size={13} className="inline mr-1" /> Poppler backend
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Best for long PDFs and native rendering.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEngine('browser')}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'browser'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                )}
+              >
+                Browser renderer
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Works offline in-browser; limited by device memory.</span>
+              </button>
+            </div>
+          </div>
           <div>
             <h3 className="text-sm font-semibold">Pages</h3>
             <input
@@ -287,8 +378,8 @@ export default function PdfToJpg() {
           message={message}
           error={error}
           onAction={run}
-          actionLabel="Convert to images"
-          actionDisabled={!file}
+          actionLabel={engine === 'backend' ? 'Render with Poppler' : 'Convert to images'}
+          actionDisabled={!file || (engine === 'backend' && !popplerAvailable)}
           onCancel={() => abortRef.current?.abort()}
           onReset={reset}
         />

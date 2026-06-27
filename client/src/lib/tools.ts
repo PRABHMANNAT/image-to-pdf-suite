@@ -131,12 +131,12 @@ export const TOOLS: Tool[] = [
   { id: 'unlock-pdf', name: 'Unlock PDF', description: 'Remove the password from a PDF you own — qpdf lossless or browser rasterise fallback.', route: '/tools/unlock-pdf', category: 'security', icon: LockOpen, runtime: 'hybrid', status: 'beta' },
   { id: 'protect-pdf', name: 'Protect PDF', description: 'Encrypt with 256-bit AES via qpdf — set passwords and restrict print/copy/edit.', route: '/tools/protect-pdf', category: 'security', icon: Lock, runtime: 'backend', status: 'beta' },
   { id: 'sign-pdf', name: 'Sign PDF', description: 'Draw, type or upload a signature and place it visually on any page.', route: '/tools/sign-pdf', category: 'security', icon: PenLine, runtime: 'browser', status: 'beta' },
-  { id: 'redact-pdf', name: 'Redact PDF', description: 'Permanently black-out sensitive areas.', route: '/tools/redact-pdf', category: 'security', icon: EyeOff, runtime: 'browser', status: 'coming-soon' },
-  { id: 'compare-pdf', name: 'Compare PDF', description: 'Diff two PDFs side-by-side.', route: '/tools/compare-pdf', category: 'security', icon: GitCompareArrows, runtime: 'browser', status: 'coming-soon' },
+  { id: 'redact-pdf', name: 'Redact PDF', description: 'Draw boxes to truly remove sensitive content — redacted pages are rasterised.', route: '/tools/redact-pdf', category: 'security', icon: EyeOff, runtime: 'browser', status: 'beta' },
+  { id: 'compare-pdf', name: 'Compare PDF', description: 'Compare page counts, text, and rendered pages side by side.', route: '/tools/compare-pdf', category: 'security', icon: GitCompareArrows, runtime: 'browser', status: 'beta' },
 
   // PDF Intelligence
-  { id: 'ai-summarize', name: 'AI Summarizer', description: 'Summarize a PDF using your own AI provider key.', route: '/tools/ai-summarize', category: 'intelligence', icon: Sparkles, runtime: 'hybrid', status: 'coming-soon' },
-  { id: 'translate-pdf', name: 'Translate PDF', description: 'Translate a PDF while preserving layout.', route: '/tools/translate-pdf', category: 'intelligence', icon: Languages, runtime: 'hybrid', status: 'coming-soon' },
+  { id: 'ai-summarize', name: 'AI Summarizer', description: 'Extract text and summarize locally, with optional AI provider mode.', route: '/tools/ai-summarize', category: 'intelligence', icon: Sparkles, runtime: 'hybrid', status: 'beta' },
+  { id: 'translate-pdf', name: 'Translate PDF', description: 'Extract PDF text and translate through an optional provider.', route: '/tools/translate-pdf', category: 'intelligence', icon: Languages, runtime: 'hybrid', status: 'beta' },
 ];
 
 export function toolsByCategory(id: CategoryId): Tool[] {

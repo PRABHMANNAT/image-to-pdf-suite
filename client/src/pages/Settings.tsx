@@ -1,4 +1,4 @@
-import { Trash2, Sun, Moon, Monitor, RotateCcw } from 'lucide-react';
+import { Trash2, Sun, Moon, Monitor, RotateCcw, KeyRound } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import { useTheme } from '../lib/theme';
 import { useSettings } from '../lib/settings';
@@ -240,6 +240,55 @@ export default function Settings() {
             </select>
           </label>
         </div>
+      </section>
+
+      {/* AI provider */}
+      <section className="card space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold">Optional AI provider</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Used by PDF Intelligence tools only when you choose provider mode.
+            </p>
+          </div>
+          <Badge variant="hybrid">
+            <KeyRound size={11} /> Optional
+          </Badge>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <label className="block sm:col-span-2">
+            <span className="label">OpenAI-compatible endpoint</span>
+            <input
+              className="input w-full"
+              value={settings.aiEndpoint}
+              onChange={(e) => set('aiEndpoint', e.target.value)}
+              placeholder="https://api.openai.com/v1"
+            />
+          </label>
+          <label className="block">
+            <span className="label">Model</span>
+            <input
+              className="input w-full"
+              value={settings.aiModel}
+              onChange={(e) => set('aiModel', e.target.value)}
+              placeholder="gpt-4o-mini"
+            />
+          </label>
+          <label className="block">
+            <span className="label">API key</span>
+            <input
+              type="password"
+              className="input w-full"
+              value={settings.aiApiKey}
+              onChange={(e) => set('aiApiKey', e.target.value)}
+              placeholder="Leave blank to use server .env"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+          Local summarization does not use this. High-quality summaries and translation require a compatible provider, a server .env key, or a key you enter here.
+        </p>
       </section>
 
       {/* Storage + reset */}

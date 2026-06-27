@@ -27,6 +27,11 @@ export interface ToolkitSettings {
 
   // OCR
   ocrLanguage: string; // BCP-style code expected by Tesseract.js (e.g. "eng")
+
+  // Optional AI / translation provider
+  aiEndpoint: string;
+  aiModel: string;
+  aiApiKey: string;
 }
 
 export const DEFAULT_SETTINGS: ToolkitSettings = {
@@ -40,6 +45,9 @@ export const DEFAULT_SETTINGS: ToolkitSettings = {
   outputNamePattern: DEFAULT_NAME_PATTERN,
   previewZoom: PREVIEW_ZOOM_DEFAULT,
   ocrLanguage: 'eng',
+  aiEndpoint: 'https://api.openai.com/v1',
+  aiModel: 'gpt-4o-mini',
+  aiApiKey: '',
 };
 
 const STORAGE_KEY = 'ultra-pdf:settings';

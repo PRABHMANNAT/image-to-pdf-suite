@@ -7,10 +7,14 @@ import securityRouter from './routes/security';
 import utilityRouter from './routes/utility';
 import officeRouter from './routes/office';
 import capabilitiesRouter from './routes/capabilities';
+import intelligenceRouter from './routes/intelligence';
+import backendRouter from './routes/backend';
 import { ensureDirs } from './utils/paths';
 import { startCleanupTimer } from './services/cleanupService';
+import { loadEnvFiles } from './utils/env';
 
 export function createApp() {
+  loadEnvFiles();
   ensureDirs();
   startCleanupTimer();
 
@@ -24,6 +28,8 @@ export function createApp() {
   app.use('/api/pdf', pdfConvertRouter);
   app.use('/api/pdf', securityRouter);
   app.use('/api/office', officeRouter);
+  app.use('/api/intelligence', intelligenceRouter);
+  app.use('/api/backend', backendRouter);
   app.use('/api', capabilitiesRouter);
   app.use('/api', utilityRouter);
 

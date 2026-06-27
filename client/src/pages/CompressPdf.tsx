@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Minimize2, Info } from 'lucide-react';
+import { Minimize2, Info, Server, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   ToolLayout,
   FileDropzone,
@@ -16,14 +16,22 @@ import {
 } from '../lib/pdfCompress';
 import { applyNamePattern, humanSize } from '../lib/fileUtils';
 import { useSettings } from '../lib/settings';
+import { useCapabilities } from '../lib/capabilities';
+import { postBackendPdf } from '../lib/backendPdf';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
+
+type EngineMode = 'backend' | 'browser';
+type GsPreset = 'screen' | 'ebook' | 'printer' | 'prepress';
 
 export default function CompressPdf() {
   const tool = findTool('compress-pdf')!;
   const { settings } = useSettings();
+  const caps = useCapabilities();
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const file = files[0] ?? null;
+  const [engine, setEngine] = useState<EngineMode>('browser');
+  const [gsPreset, setGsPreset] = useState<GsPreset>('ebook');
   const [preset, setPreset] = useState<CompressPreset>('medium');
   const [lossless, setLossless] = useState(false);
   const [customDpi, setCustomDpi] = useState(150);
@@ -38,6 +46,12 @@ export default function CompressPdf() {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  const gsAvailable = caps.status === 'ready' && caps.caps.ghostscript.available;
+
+  useEffect(() => {
+    if (gsAvailable) setEngine('backend');
+  }, [gsAvailable]);
 
   const originalSize = file?.file.size ?? 0;
   const outSize = result?.kind === 'single' ? result.blob.size : 0;
@@ -65,15 +79,27 @@ export default function CompressPdf() {
     setMessage(lossless ? 'Re-saving (lossless)…' : 'Rasterising pages…');
 
     try {
-      const blob = await compressPdf(
-        file.file,
-        { preset, lossless, customDpi, customQuality },
-        (info) => {
-          setProgress(info.pct);
-          if (info.message) setMessage(info.message);
-        },
-        abortRef.current.signal,
-      );
+      let blob: Blob;
+      if (engine === 'backend') {
+        blob = await postBackendPdf('/api/backend/pdf/compress', file.file, {
+          signal: abortRef.current.signal,
+          fields: { preset: gsPreset },
+          onUploadProgress: (pct) => {
+            setProgress(Math.min(95, pct));
+            if (pct >= 100) setMessage('Compressing with Ghostscript...');
+          },
+        });
+      } else {
+        blob = await compressPdf(
+          file.file,
+          { preset, lossless, customDpi, customQuality },
+          (info) => {
+            setProgress(info.pct);
+            if (info.message) setMessage(info.message);
+          },
+          abortRef.current.signal,
+        );
+      }
       const name = applyNamePattern(settings.outputNamePattern, {
         name: file.file.name.replace(/\.pdf$/i, ''),
         tool: 'compressed',
@@ -119,7 +145,7 @@ export default function CompressPdf() {
           multiple={false}
           hideZoneWhenFilled={files.length > 0}
           label="Drop a PDF to compress"
-          helperText="Compression runs entirely on this device."
+          helperText={gsAvailable ? 'Ghostscript backend available for deeper compression.' : 'Browser-only compression is available.'}
         />
       }
       preview={
@@ -150,6 +176,21 @@ export default function CompressPdf() {
               </div>
             </section>
           )}
+          {caps.status === 'ready' && (
+            <section className={cn(
+              'card text-sm flex items-start gap-2',
+              gsAvailable
+                ? 'border-emerald-300/60 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                : 'border-amber-300/60 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300',
+            )}>
+              {gsAvailable ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}
+              <p className="text-xs">
+                {gsAvailable
+                  ? `Ghostscript detected${caps.caps.ghostscript.version ? `: v${caps.caps.ghostscript.version}` : ''}. Backend compression has no browser memory limit.`
+                  : 'Ghostscript not detected. Browser compression remains available with local device limits.'}
+              </p>
+            </section>
+          )}
           {previewBlob && (
             <section>
               <h3 className="text-sm font-semibold mb-2">Compressed PDF preview</h3>
@@ -160,6 +201,52 @@ export default function CompressPdf() {
       }
       options={
         <section className="card space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">Engine</h3>
+            <div className="mt-2 grid grid-cols-1 gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEngine('backend')}
+                disabled={!gsAvailable}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'backend'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  !gsAvailable && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                <Server size={13} className="inline mr-1" /> Ghostscript backend
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Advanced native compression for large PDFs.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEngine('browser')}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'browser'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                )}
+              >
+                Browser-only mode
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Uses pdf.js/pdf-lib and device memory.</span>
+              </button>
+            </div>
+          </div>
+          {engine === 'backend' && (
+            <div className="border-t border-slate-200 dark:border-white/10 pt-3">
+              <h3 className="text-sm font-semibold">Ghostscript preset</h3>
+              <select className="input w-full mt-2" value={gsPreset} onChange={(e) => setGsPreset(e.target.value as GsPreset)}>
+                <option value="screen">Screen - smallest, lowest quality</option>
+                <option value="ebook">Ebook - balanced default</option>
+                <option value="printer">Printer - print quality</option>
+                <option value="prepress">Prepress - highest quality</option>
+              </select>
+            </div>
+          )}
+          {engine === 'browser' && (
+            <>
           <div>
             <h3 className="text-sm font-semibold">Compression preset</h3>
             <div className="mt-2 grid grid-cols-1 gap-1.5">
@@ -236,6 +323,8 @@ export default function CompressPdf() {
               This is the best compression achievable in the browser. Deeper savings (font subsetting, content-aware downsampling) require Ghostscript on a backend — that path will appear automatically once the backend is detected.
             </p>
           </div>
+            </>
+          )}
         </section>
       }
       action={
@@ -246,8 +335,8 @@ export default function CompressPdf() {
           message={message}
           error={error}
           onAction={run}
-          actionLabel="Compress"
-          actionDisabled={!file}
+          actionLabel={engine === 'backend' ? 'Compress with Ghostscript' : 'Compress in browser'}
+          actionDisabled={!file || (engine === 'backend' && !gsAvailable)}
           onCancel={() => abortRef.current?.abort()}
           onReset={reset}
         />

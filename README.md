@@ -86,6 +86,53 @@ npm run install:all
 
 > sharp installs prebuilt binaries for your platform. On some Linux distros you may need `apt-get install -y libvips`.
 
+## Optional native backend engines
+
+The app works without paid services. Browser mode remains available where practical, but large or advanced jobs can use native tools installed on the machine running the backend. There are no usage limits beyond your device/server CPU, memory, disk, and the upload limits configured in the app.
+
+Install any engines you want to enable:
+
+```bash
+# Debian/Ubuntu
+sudo apt-get update
+sudo apt-get install -y libreoffice ghostscript qpdf poppler-utils ocrmypdf tesseract-ocr tesseract-ocr-eng
+
+# macOS
+brew install qpdf ghostscript poppler ocrmypdf tesseract
+brew install --cask libreoffice
+
+# Windows
+# LibreOffice: https://www.libreoffice.org/download/
+# qpdf:        https://github.com/qpdf/qpdf/releases
+# Ghostscript: https://www.ghostscript.com/releases/gsdnld.html
+# Poppler:     install a Poppler build and add its bin folder to PATH
+# Tesseract:   https://github.com/UB-Mannheim/tesseract/wiki
+# OCRmyPDF:    install via Python after Ghostscript, qpdf, Poppler, and Tesseract are available:
+python -m pip install ocrmypdf
+```
+
+Native engine coverage:
+
+| Engine | Enables |
+| ------ | ------- |
+| LibreOffice headless | Word/PowerPoint/Excel to PDF; PDF to DOCX/PPTX/XLSX approximations |
+| qpdf | Protect PDF, Unlock PDF, native Repair PDF |
+| Ghostscript | Advanced Compress PDF, PDF/A conversion |
+| Poppler | Native PDF to images, native text extraction |
+| OCRmyPDF/Tesseract | High-quality searchable OCR PDFs |
+
+The frontend checks `/api/capabilities` at startup. If a native engine is missing, the related page shows browser-only mode or setup instructions instead of failing silently.
+
+Backend processing uses secure disk uploads:
+
+- file types are validated by route before processing
+- filenames are sanitized before writing to disk
+- uploads land in `server/uploads/`
+- native tools run in per-job directories under `server/temp/`
+- outputs stream back as downloads
+- upload/temp files are deleted after the response and old files are swept automatically
+- long-running native jobs expose status through `/api/backend/jobs/:id`
+
 ## Run (development)
 
 ```bash
@@ -155,6 +202,13 @@ All endpoints accept `multipart/form-data` and return either the resulting file 
 | POST   | `/api/pdf/remove-pages`    | single `file` + `range` → PDF |
 | POST   | `/api/pdf/reorder`         | single `file` + `order` → PDF |
 | POST   | `/api/pdf/rotate-pages`    | single `file` + optional `range` + `angle` → PDF |
+| POST   | `/api/backend/pdf/compress` | single PDF + `preset` (`screen`, `ebook`, `printer`, `prepress`) → PDF |
+| POST   | `/api/backend/pdf/repair` | single PDF → repaired PDF via qpdf |
+| POST   | `/api/backend/pdf/to-images` | single PDF + `format`, `dpi`, optional `firstPage`/`lastPage` → ZIP |
+| POST   | `/api/backend/pdf/extract-text` | single PDF + optional `layout` → TXT |
+| POST   | `/api/backend/pdf/ocr` | single PDF + `language` → searchable PDF via OCRmyPDF |
+| GET    | `/api/backend/jobs/:id` | JSON status for a backend job |
+| GET    | `/api/backend/capabilities` | force-refresh native engine capabilities |
 | GET    | `/api/health`              | health check |
 | DELETE | `/api/temp/cleanup`        | wipe temp/upload/output dirs |
 

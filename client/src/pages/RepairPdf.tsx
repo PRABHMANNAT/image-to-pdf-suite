@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Wrench, CheckCircle2, XCircle, Loader2, Circle, AlertTriangle } from 'lucide-react';
+import { Wrench, CheckCircle2, XCircle, Loader2, Circle, AlertTriangle, Server } from 'lucide-react';
 import { PDFDocument } from 'pdf-lib';
 import {
   ToolLayout,
@@ -13,11 +13,14 @@ import { compressByRasterise } from '../lib/pdfCompress';
 import { savePdfLib } from '../lib/pdfUtils';
 import { applyNamePattern, humanSize } from '../lib/fileUtils';
 import { useSettings } from '../lib/settings';
+import { useCapabilities } from '../lib/capabilities';
+import { postBackendPdf } from '../lib/backendPdf';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
 
 type StepKey = 'parse' | 'resave' | 'rasterise';
 type StepState = 'pending' | 'active' | 'success' | 'failed' | 'skipped';
+type EngineMode = 'backend' | 'browser';
 
 interface StepInfo {
   key: StepKey;
@@ -46,8 +49,10 @@ const STEPS: StepInfo[] = [
 export default function RepairPdf() {
   const tool = findTool('repair-pdf')!;
   const { settings } = useSettings();
+  const caps = useCapabilities();
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const file = files[0] ?? null;
+  const [engine, setEngine] = useState<EngineMode>('browser');
   const [steps, setSteps] = useState<Record<StepKey, StepState>>({
     parse: 'pending',
     resave: 'pending',
@@ -64,6 +69,12 @@ export default function RepairPdf() {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  const qpdfAvailable = caps.status === 'ready' && caps.caps.qpdf.available;
+
+  useEffect(() => {
+    if (qpdfAvailable) setEngine('backend');
+  }, [qpdfAvailable]);
 
   function setStep(key: StepKey, value: StepState): void {
     setSteps((prev) => ({ ...prev, [key]: value }));
@@ -83,6 +94,43 @@ export default function RepairPdf() {
     setReportLines([]);
     setSteps({ parse: 'pending', resave: 'pending', rasterise: 'pending' });
     setMessage('Inspecting file…');
+
+    if (engine === 'backend') {
+      try {
+        setMessage('Repairing with qpdf...');
+        const blob = await postBackendPdf('/api/backend/pdf/repair', file.file, {
+          signal: abortRef.current.signal,
+          onUploadProgress: (pct) => {
+            setProgress(Math.min(95, pct));
+            if (pct >= 100) setMessage('Rewriting structure with qpdf...');
+          },
+        });
+        setStep('parse', 'success');
+        setStep('resave', 'success');
+        setStep('rasterise', 'skipped');
+        log(`qpdf repaired ${humanSize(file.file.size)} into ${humanSize(blob.size)}.`);
+        const name = applyNamePattern(settings.outputNamePattern, {
+          name: file.file.name.replace(/\.pdf$/i, ''),
+          tool: 'repaired-qpdf',
+          ext: '.pdf',
+        });
+        setResult({ kind: 'single', blob, suggestedName: name });
+        setMessage('Repair succeeded via qpdf backend.');
+        setProgress(100);
+        setState('success');
+        return;
+      } catch (e) {
+        if (abortRef.current?.signal.aborted) {
+          setState('idle');
+          return;
+        }
+        log(`qpdf backend failed: ${e instanceof Error ? e.message : String(e)}`);
+        setStep('parse', 'failed');
+        setError(e instanceof Error ? e.message : String(e));
+        setState('error');
+        return;
+      }
+    }
 
     const bytes = new Uint8Array(await file.file.arrayBuffer());
 
@@ -206,7 +254,7 @@ export default function RepairPdf() {
           multiple={false}
           hideZoneWhenFilled={files.length > 0}
           label="Drop a damaged PDF"
-          helperText="Repair tries a tolerant parse, then a full rasterised rebuild."
+          helperText={qpdfAvailable ? 'qpdf backend is available for native structural repair.' : 'Browser repair tries a tolerant parse, then a rasterised rebuild.'}
         />
       }
       preview={
@@ -250,6 +298,38 @@ export default function RepairPdf() {
       }
       options={
         <section className="card space-y-2 text-sm">
+          <h3 className="font-semibold">Engine</h3>
+          <div className="grid grid-cols-1 gap-1.5">
+            <button
+              type="button"
+              onClick={() => setEngine('backend')}
+              disabled={!qpdfAvailable}
+              className={cn(
+                'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                engine === 'backend'
+                  ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                  : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                !qpdfAvailable && 'opacity-50 cursor-not-allowed',
+              )}
+            >
+              <Server size={13} className="inline mr-1" /> qpdf backend
+              <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Native repair and linearized rewrite.</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setEngine('browser')}
+              className={cn(
+                'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                engine === 'browser'
+                  ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                  : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+              )}
+            >
+              Browser-only recovery
+              <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Tolerant pdf-lib re-save, then rasterized fallback.</span>
+            </button>
+          </div>
+          <div className="border-t border-slate-200 dark:border-white/10 pt-2" />
           <h3 className="font-semibold">What this can fix</h3>
           <ul className="text-xs text-slate-500 dark:text-slate-400 list-disc pl-5 space-y-1">
             <li>Broken cross-reference tables (xref) where the page tree is still intact.</li>
@@ -276,8 +356,8 @@ export default function RepairPdf() {
           message={message}
           error={error}
           onAction={run}
-          actionLabel={hasFailures && state === 'idle' ? 'Try again' : 'Repair PDF'}
-          actionDisabled={!file}
+          actionLabel={engine === 'backend' ? 'Repair with qpdf' : hasFailures && state === 'idle' ? 'Try again' : 'Repair PDF'}
+          actionDisabled={!file || (engine === 'backend' && !qpdfAvailable)}
           onCancel={() => abortRef.current?.abort()}
           onReset={reset}
         />

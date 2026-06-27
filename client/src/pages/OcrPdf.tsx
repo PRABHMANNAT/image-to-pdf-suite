@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ScanText, Copy, Info } from 'lucide-react';
+import { ScanText, Copy, Info, Server, CheckCircle2, AlertTriangle } from 'lucide-react';
 import {
   ToolLayout,
   FileDropzone,
@@ -18,18 +18,23 @@ import {
 import { OCR_LANGUAGES } from '../lib/constants';
 import { applyNamePattern } from '../lib/fileUtils';
 import { useSettings } from '../lib/settings';
+import { useCapabilities } from '../lib/capabilities';
+import { postBackendPdf } from '../lib/backendPdf';
 import { useToast } from '../hooks/useToast';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
 
 type OutputKind = 'text' | 'searchable' | 'both';
+type EngineMode = 'backend' | 'browser';
 
 export default function OcrPdf() {
   const tool = findTool('ocr-pdf')!;
   const { settings } = useSettings();
+  const caps = useCapabilities();
   const toast = useToast();
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const file = files[0] ?? null;
+  const [engine, setEngine] = useState<EngineMode>('browser');
   const [language, setLanguage] = useState<string>(settings.ocrLanguage);
   const [dpi, setDpi] = useState<number>(200);
   const [outputKind, setOutputKind] = useState<OutputKind>('both');
@@ -49,6 +54,11 @@ export default function OcrPdf() {
     };
   }, []);
 
+  const ocrBackendAvailable = caps.status === 'ready' && Boolean(caps.caps.ocr?.available);
+  useEffect(() => {
+    if (ocrBackendAvailable) setEngine('backend');
+  }, [ocrBackendAvailable]);
+
   async function run(): Promise<void> {
     if (!file) return;
     abortRef.current = new AbortController();
@@ -60,6 +70,31 @@ export default function OcrPdf() {
     setMessage('Initialising OCR engine…');
 
     try {
+      if (engine === 'backend') {
+        const pdf = await postBackendPdf('/api/backend/pdf/ocr', file.file, {
+          signal: abortRef.current.signal,
+          fields: { language, deskew: 'true' },
+          onUploadProgress: (pct) => {
+            setProgress(Math.min(95, pct));
+            if (pct >= 100) setMessage('Running OCRmyPDF...');
+          },
+        });
+        const baseName = file.file.name.replace(/\.pdf$/i, '');
+        setResult({
+          kind: 'single',
+          blob: pdf,
+          suggestedName: applyNamePattern(settings.outputNamePattern, {
+            name: baseName,
+            tool: 'ocr',
+            ext: '.pdf',
+          }),
+        });
+        setProgress(100);
+        setMessage('Searchable PDF created with OCRmyPDF.');
+        setState('success');
+        return;
+      }
+
       const recognised = await ocrPdf(file.file, {
         language,
         dpi,
@@ -176,11 +211,24 @@ export default function OcrPdf() {
           multiple={false}
           hideZoneWhenFilled={files.length > 0}
           label="Drop a scanned PDF"
-          helperText="Tesseract.js runs entirely in your browser. Large PDFs may take a while."
+          helperText={ocrBackendAvailable ? 'OCRmyPDF backend is available for high-quality searchable PDFs.' : 'Tesseract.js runs entirely in your browser. Large PDFs may take a while.'}
         />
       }
       preview={
         <div className="space-y-4">
+          {caps.status === 'ready' && (
+            <section className={cn(
+              'card text-sm flex items-start gap-2',
+              ocrBackendAvailable
+                ? 'border-emerald-300/60 bg-emerald-50/60 dark:border-emerald-500/30 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                : 'border-amber-300/60 bg-amber-50/60 dark:border-amber-500/30 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300',
+            )}>
+              {ocrBackendAvailable ? <CheckCircle2 size={16} className="mt-0.5" /> : <AlertTriangle size={16} className="mt-0.5" />}
+              <p className="text-xs">
+                {ocrBackendAvailable ? 'OCRmyPDF detected. Backend mode creates searchable PDFs without browser memory limits.' : 'OCRmyPDF not detected. Browser OCR remains available.'}
+              </p>
+            </section>
+          )}
           {pages.length > 0 && (
             <section className="card space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -238,6 +286,39 @@ export default function OcrPdf() {
       }
       options={
         <section className="card space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold">Engine</h3>
+            <div className="mt-2 grid gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEngine('backend')}
+                disabled={!ocrBackendAvailable}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'backend'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  !ocrBackendAvailable && 'opacity-50 cursor-not-allowed',
+                )}
+              >
+                <Server size={13} className="inline mr-1" /> OCRmyPDF backend
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">Best quality searchable PDF for large scans.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEngine('browser')}
+                className={cn(
+                  'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                  engine === 'browser'
+                    ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                    : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                )}
+              >
+                Browser Tesseract.js
+                <span className="block text-[10px] font-normal text-slate-500 mt-0.5">No backend required; slower for large PDFs.</span>
+              </button>
+            </div>
+          </div>
           <div>
             <h3 className="text-sm font-semibold">Language</h3>
             <select
@@ -311,8 +392,8 @@ export default function OcrPdf() {
           message={message}
           error={error}
           onAction={run}
-          actionLabel="Run OCR"
-          actionDisabled={!file}
+          actionLabel={engine === 'backend' ? 'Run OCRmyPDF' : 'Run OCR'}
+          actionDisabled={!file || (engine === 'backend' && !ocrBackendAvailable)}
           onCancel={() => abortRef.current?.abort()}
           onReset={reset}
         />

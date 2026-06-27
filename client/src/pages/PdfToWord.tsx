@@ -8,6 +8,7 @@ import {
 } from '../components/shared';
 import type { AcceptedFile, ProcessingState, ToolResult } from '../components/shared';
 import { convertPdfBackend, PdfConvertError } from '../lib/convertPdfBackend';
+import { postBackendPdf } from '../lib/backendPdf';
 import { extractPdfText, joinExtractedAsText } from '../lib/pdfText';
 import { useCapabilities } from '../lib/capabilities';
 import { useSettings } from '../lib/settings';
@@ -32,6 +33,7 @@ export default function PdfToWord() {
   const abortRef = useRef<AbortController | null>(null);
 
   const libreofficeAvailable = caps.status === 'ready' && caps.caps.libreoffice.available;
+  const popplerAvailable = caps.status === 'ready' && caps.caps.poppler.available;
   const backendReachable = caps.status === 'ready';
 
   // Auto-fall back to the text path if the backend is known-missing.
@@ -73,16 +75,28 @@ export default function PdfToWord() {
         setProgress(100);
         setMessage('Converted.');
       } else {
-        const pages = await extractPdfText(
-          file.file,
-          (info) => {
-            setProgress(info.pct);
-            setMessage(`Reading page ${info.current}/${info.total}`);
-          },
-          abortRef.current.signal,
-        );
-        const text = joinExtractedAsText(pages);
-        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        let blob: Blob;
+        if (popplerAvailable) {
+          blob = await postBackendPdf('/api/backend/pdf/extract-text', file.file, {
+            signal: abortRef.current.signal,
+            fields: { layout: 'true' },
+            onUploadProgress: (pct) => {
+              setProgress(Math.min(95, pct));
+              if (pct >= 100) setMessage('Extracting text with Poppler...');
+            },
+          });
+        } else {
+          const pages = await extractPdfText(
+            file.file,
+            (info) => {
+              setProgress(info.pct);
+              setMessage(`Reading page ${info.current}/${info.total}`);
+            },
+            abortRef.current.signal,
+          );
+          const text = joinExtractedAsText(pages);
+          blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        }
         setResult({
           kind: 'single',
           blob,
@@ -92,7 +106,7 @@ export default function PdfToWord() {
             ext: '.txt',
           }),
         });
-        setMessage(`Extracted ${pages.length} pages of plain text.`);
+        setMessage(popplerAvailable ? 'Extracted text with Poppler.' : 'Extracted plain text in the browser.');
       }
       setState('success');
     } catch (e) {
@@ -224,7 +238,7 @@ export default function PdfToWord() {
             >
               Plain text (.txt, browser-only)
               <span className="block text-[10px] font-normal text-slate-500 mt-0.5">
-                Always works. Strips formatting and images.
+                {popplerAvailable ? 'Uses Poppler backend for native text extraction.' : 'Always works. Strips formatting and images.'}
               </span>
             </button>
           </div>

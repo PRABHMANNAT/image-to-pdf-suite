@@ -163,3 +163,23 @@ export async function unlockPdf(inputPath: string, password: string): Promise<st
   await fs.access(outPath);
   return outPath;
 }
+
+export async function repairPdfWithQpdf(inputPath: string): Promise<string> {
+  const cap = await checkQpdf();
+  if (!cap.available) throw new QpdfMissingError();
+  const workDir = await makeWork('qpdf-repair');
+  const outPath = path.join(
+    workDir,
+    path.basename(inputPath, path.extname(inputPath)) + '.repaired.pdf',
+  );
+  const { code, stderr } = await runCmd(
+    cap.binary!,
+    ['--linearize', '--object-streams=generate', inputPath, outPath],
+    120_000,
+  );
+  if (code !== 0) {
+    throw new Error(`qpdf repair failed (exit ${code}): ${stderr.trim() || 'no stderr output'}`);
+  }
+  await fs.access(outPath);
+  return outPath;
+}

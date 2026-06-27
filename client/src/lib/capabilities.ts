@@ -16,6 +16,10 @@ export interface ServerCapabilities {
   qpdf: CapabilityInfo;
   poppler: CapabilityInfo;
   tesseract: CapabilityInfo;
+  ocr?: CapabilityInfo & {
+    ocrmypdf?: CapabilityInfo;
+    tesseract?: CapabilityInfo;
+  };
 }
 
 export const UNKNOWN_CAPABILITIES: ServerCapabilities = {

@@ -118,3 +118,41 @@ export async function convertToPdfA(inputPath: string, level: PdfALevel = '2b'):
   await fs.access(outPath);
   return outPath;
 }
+
+export type GsCompressionPreset = 'screen' | 'ebook' | 'printer' | 'prepress';
+
+export async function compressPdfWithGhostscript(
+  inputPath: string,
+  preset: GsCompressionPreset = 'ebook',
+): Promise<string> {
+  const cap = await checkGhostscript();
+  if (!cap.available) throw new GhostscriptMissingError();
+
+  const workDir = path.join(TEMP_DIR, `gs-compress-${crypto.randomBytes(6).toString('hex')}`);
+  await fs.mkdir(workDir, { recursive: true });
+  const outPath = path.join(workDir, path.basename(inputPath, path.extname(inputPath)) + '.compressed.pdf');
+
+  const { code, stderr } = await runCmd(
+    cap.binary!,
+    [
+      '-dBATCH',
+      '-dNOPAUSE',
+      '-dSAFER',
+      '-sDEVICE=pdfwrite',
+      `-dPDFSETTINGS=/${preset}`,
+      '-dCompatibilityLevel=1.7',
+      '-dDetectDuplicateImages=true',
+      '-dCompressFonts=true',
+      '-dSubsetFonts=true',
+      `-sOutputFile=${outPath}`,
+      inputPath,
+    ],
+    240_000,
+  );
+
+  if (code !== 0) {
+    throw new Error(`Ghostscript compression failed (exit ${code}): ${stderr.trim() || 'no stderr output'}`);
+  }
+  await fs.access(outPath);
+  return outPath;
+}

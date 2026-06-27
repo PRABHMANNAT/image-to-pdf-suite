@@ -117,7 +117,7 @@ export const TOOLS: Tool[] = [
   { id: 'pdf-to-word', name: 'PDF to Word', description: 'Convert PDFs to .docx via LibreOffice, or extract plain text in-browser.', route: '/tools/pdf-to-word', category: 'convert-from', icon: FileType, runtime: 'hybrid', status: 'beta' },
   { id: 'pdf-to-ppt', name: 'PDF to PowerPoint', description: 'Build a .pptx where each PDF page becomes one slide image.', route: '/tools/pdf-to-ppt', category: 'convert-from', icon: Presentation, runtime: 'browser', status: 'beta' },
   { id: 'pdf-to-excel', name: 'PDF to Excel', description: 'Heuristic table extraction → CSV / TSV / plain text in the browser.', route: '/tools/pdf-to-excel', category: 'convert-from', icon: Sheet, runtime: 'browser', status: 'beta' },
-  { id: 'pdf-to-pdfa', name: 'PDF to PDF/A', description: 'Convert to archival PDF/A.', route: '/tools/pdf-to-pdfa', category: 'convert-from', icon: FileType2, runtime: 'backend', status: 'coming-soon' },
+  { id: 'pdf-to-pdfa', name: 'PDF to PDF/A', description: 'Convert to archival PDF/A-1b/2b/3b via Ghostscript on the backend.', route: '/tools/pdf-to-pdfa', category: 'convert-from', icon: FileType2, runtime: 'backend', status: 'beta' },
 
   // Edit PDF
   { id: 'rotate-pdf', name: 'Rotate PDF', description: 'Rotate one, several, or all pages.', route: '/tools/rotate-pdf', category: 'edit', icon: RotateCw, runtime: 'browser', status: 'ready' },

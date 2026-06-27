@@ -26,6 +26,7 @@ import OfficeToPdf from './pages/OfficeToPdf';
 import HtmlToPdf from './pages/HtmlToPdf';
 import PdfToJpg from './pages/PdfToJpg';
 import PdfToWord from './pages/PdfToWord';
+import PdfToPpt from './pages/PdfToPpt';
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
             <Route path="/tools/html-to-pdf" element={<HtmlToPdf />} />
             <Route path="/tools/pdf-to-jpg" element={<PdfToJpg />} />
             <Route path="/tools/pdf-to-word" element={<PdfToWord />} />
+            <Route path="/tools/pdf-to-ppt" element={<PdfToPpt />} />
             <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 

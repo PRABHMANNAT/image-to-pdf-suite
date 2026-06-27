@@ -32,6 +32,7 @@ import PdfToPdfA from './pages/PdfToPdfA';
 import RotatePdf from './pages/RotatePdf';
 import AddPageNumbers from './pages/AddPageNumbers';
 import AddWatermark from './pages/AddWatermark';
+import CropPdf from './pages/CropPdf';
 
 export default function App() {
   return (
@@ -68,6 +69,7 @@ export default function App() {
             <Route path="/tools/rotate-pdf" element={<RotatePdf />} />
             <Route path="/tools/page-numbers" element={<AddPageNumbers />} />
             <Route path="/tools/watermark" element={<AddWatermark />} />
+            <Route path="/tools/crop-pdf" element={<CropPdf />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 
             {/* Catch-all tool route — renders the placeholder for any coming-soon tool. */}

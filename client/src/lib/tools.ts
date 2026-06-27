@@ -123,7 +123,7 @@ export const TOOLS: Tool[] = [
   { id: 'rotate-pdf', name: 'Rotate PDF', description: 'Rotate one, several, or all pages.', route: '/tools/rotate-pdf', category: 'edit', icon: RotateCw, runtime: 'browser', status: 'ready' },
   { id: 'page-numbers', name: 'Add Page Numbers', description: 'Stamp page numbers with custom position, font, color, prefix and range.', route: '/tools/page-numbers', category: 'edit', icon: Hash, runtime: 'browser', status: 'beta' },
   { id: 'watermark', name: 'Add Watermark', description: 'Stamp a text or image watermark with opacity, rotation, anchor and tile patterns.', route: '/tools/watermark', category: 'edit', icon: Droplet, runtime: 'browser', status: 'beta' },
-  { id: 'crop-pdf', name: 'Crop PDF', description: 'Crop pages visually with draggable handles.', route: '/tools/crop-pdf', category: 'edit', icon: CropIcon, runtime: 'browser', status: 'coming-soon' },
+  { id: 'crop-pdf', name: 'Crop PDF', description: 'Drag a crop rectangle on a real page preview and apply to all/selected/range.', route: '/tools/crop-pdf', category: 'edit', icon: CropIcon, runtime: 'browser', status: 'beta' },
   { id: 'edit-pdf', name: 'Edit PDF', description: 'Add text, shapes and images to a PDF.', route: '/tools/edit-pdf', category: 'edit', icon: Pencil, runtime: 'browser', status: 'coming-soon' },
   { id: 'pdf-forms', name: 'PDF Forms', description: 'Fill out and flatten PDF forms.', route: '/tools/pdf-forms', category: 'edit', icon: FormInput, runtime: 'browser', status: 'coming-soon' },
 

@@ -3,6 +3,8 @@ import { Shell } from './components/layout/Shell';
 import { ToastProvider } from './hooks/useToast';
 import { ThemeProvider } from './lib/theme';
 import { SettingsProvider } from './lib/settings';
+import { BatchQueueProvider } from './lib/batchQueue';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 import Dashboard from './pages/Dashboard';
 import CategoryView from './pages/CategoryView';
@@ -45,10 +47,12 @@ import TranslatePdf from './pages/TranslatePdf';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <SettingsProvider>
-        <ToastProvider>
-          <Shell>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <SettingsProvider>
+          <BatchQueueProvider>
+            <ToastProvider>
+              <Shell>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/category/:id" element={<CategoryView />} />
@@ -101,9 +105,11 @@ export default function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </Shell>
-        </ToastProvider>
-      </SettingsProvider>
-    </ThemeProvider>
+              </Shell>
+            </ToastProvider>
+          </BatchQueueProvider>
+        </SettingsProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }

@@ -1,251 +1,226 @@
-# Ultra PDF Image Toolkit
+# Ultra PDF Toolkit
 
-A **local-first** file utility web app for working with images and PDFs. Convert any number of images to a high-resolution PDF, crop and rotate images, merge/split/edit PDFs - all processed entirely on your own machine.
-
-> Files never leave your computer. Nothing is uploaded to any cloud service.
+A local-first PDF and image workspace built with React, Vite, TypeScript, Tailwind CSS, and an optional Node/Express backend. Most tools run entirely in the browser. Native backend engines can be installed for large files, Office conversion, stronger compression, OCR, encryption, repair, and archival conversion.
 
 ## Features
 
-- **Image to PDF**
-  - Upload many images at once (200+ supported)
-  - JPG, JPEG, PNG, WEBP, TIFF, BMP, GIF
-  - Drag-and-drop reorder, A-Z / Z-A sort, remove individual files
-  - Page layouts: same size as image, A4 / Letter portrait & landscape, custom mm
-  - Image fit: Fit / Fill (crop) / Stretch / Original
-  - Configurable margin and background color
-  - **Maximum Quality Mode** (default): no downscaling, EXIF auto-rotation, JPEG quality 100, lossless PNG
-- **Crop Image**
-  - Single image crop or batch crop with same region
-  - Aspect ratios: Free, 1:1, 4:5, 9:16, 16:9, A4, Passport
-  - Export PNG / JPEG / WEBP at quality 100
-- **PDF Merge** - combine multiple PDFs into one, preserve original quality, no rasterization
-- **PDF Split**
-  - Split every page into separate PDFs (downloaded as ZIP)
-  - Extract page range (e.g. `1-5`, `1,3,7`, `2-4,8,10-12`)
-  - Split into chunks of N pages
-- **PDF Page Editor** - extract, remove, reorder, or rotate pages
-- **Local privacy** - uploads land in a temporary folder, auto-cleaned after 1 hour or via Settings → Clear temp files
-- **Dark mode**, toast notifications, progress bars, friendly error messages
+- Animated dashboard with category navigation, recent local files, and status-focused polish.
+- Command palette and search. Press `Ctrl+K` or `/`, then type commands such as `merge`, `crop`, `compress`, `protect`, or `ocr`.
+- Local recent files history stored in `localStorage` by file name, size, type, route, and tool.
+- Batch processing queue that tracks running, successful, and failed jobs while you move around the app.
+- Keyboard shortcuts:
+  - `Ctrl+K`: open command palette
+  - `/`: open command palette when not typing
+  - `Ctrl+Enter`: run the current tool action when not typing
+  - `Esc`: close overlays
+- Empty states, loading skeletons, helpful tooltips, and an app-level error boundary.
+- Responsive mobile drawer sidebar.
+- Before/after preview for relevant PDF transformations, including compression and crop output.
+- Output quality presets:
+  - Maximum quality
+  - Balanced
+  - Small file
+  - Custom
+- Dark mode, settings, progress bars, result renaming, ZIP downloads, and local privacy by default.
 
-## Tech stack
+## Browser-Only Features
 
-- Frontend: React + Vite + TypeScript + Tailwind CSS + react-dropzone + lucide-react
-- Backend: Node.js + Express + TypeScript
-- Image processing: sharp
-- PDF processing: pdf-lib
-- Uploads: multer (disk storage in `server/uploads`)
-- ZIP bundling: archiver
+These features work without the backend or native command-line tools, subject to browser memory limits:
 
-## Folder structure
+- Image to PDF and JPG to PDF
+- Crop Image
+- Merge PDF
+- Split PDF
+- Remove Pages
+- Extract Pages
+- Organize PDF
+- Scan to PDF
+- HTML to PDF
+- PDF to JPG/PNG/WEBP in browser mode
+- PDF to PowerPoint
+- PDF to Excel text/CSV/TSV extraction
+- Rotate PDF
+- Add Page Numbers
+- Add Watermark
+- Crop PDF
+- Edit PDF overlays
+- PDF Forms fill/flatten
+- Sign PDF
+- Redact PDF
+- Compare PDF
+- AI Summarizer local text extraction mode
+- Translate PDF provider/local text flow
+- Browser compression mode
+- Browser fallback paths for several hybrid tools
 
-```
-ultra-pdf-image-toolkit/
-├─ client/                React + Vite app
-│  └─ src/
-│     ├─ components/      FileDropzone, FileList, ProgressBar, Sidebar, ToolLayout
-│     ├─ pages/           ImageToPdf, CropImage, MergePdf, SplitPdf, PdfPageEditor, Settings
-│     ├─ hooks/           useToast
-│     ├─ utils/           api helpers
-│     ├─ types/
-│     ├─ App.tsx
-│     └─ main.tsx
-├─ server/                Express API
-│  └─ src/
-│     ├─ routes/          images.ts, pdf.ts, utility.ts
-│     ├─ controllers/     imageController.ts, pdfController.ts
-│     ├─ services/        imageService.ts, pdfService.ts, fileService.ts, cleanupService.ts
-│     ├─ utils/           paths.ts, pageRange.ts
-│     ├─ app.ts
-│     └─ server.ts
-├─ shared/types/          shared TypeScript types
-├─ package.json           root - runs client+server with concurrently
-└─ README.md
-```
+## Backend-Required Features
 
-Temporary working dirs (auto-created, gitignored):
-- `server/uploads/` - incoming uploads
-- `server/outputs/` - generated PDFs/ZIPs
-- `server/temp/`
+These features require the Node/Express backend and, in many cases, native tools installed on the backend machine:
 
-## Install
+- Word to PDF, PowerPoint to PDF, Excel to PDF: LibreOffice
+- PDF to Word and Office approximations: LibreOffice and/or backend extraction helpers
+- PDF to PDF/A: Ghostscript
+- Advanced Compress PDF: Ghostscript
+- Protect PDF: qpdf
+- Native Unlock PDF: qpdf
+- Native Repair PDF: qpdf
+- Native PDF to images: Poppler
+- Backend OCR PDF: OCRmyPDF plus Tesseract, Ghostscript, qpdf, and Poppler
+- Provider-backed AI summarization or translation if configured in the backend environment
 
-Requires **Node.js 18+** (Node 20 recommended).
+The frontend checks backend capabilities and falls back to browser mode where the tool supports it.
 
-```bash
-# from project root
-npm install
-npm --prefix server install
-npm --prefix client install
-```
+## Setup
 
-Or all at once:
+Requires Node.js 18 or newer. Node.js 20+ is recommended.
+
+Install all JavaScript dependencies:
 
 ```bash
 npm run install:all
 ```
 
-> sharp installs prebuilt binaries for your platform. On some Linux distros you may need `apt-get install -y libvips`.
-
-## Optional native backend engines
-
-The app works without paid services. Browser mode remains available where practical, but large or advanced jobs can use native tools installed on the machine running the backend. There are no usage limits beyond your device/server CPU, memory, disk, and the upload limits configured in the app.
-
-Install any engines you want to enable:
+Equivalent manual install:
 
 ```bash
-# Debian/Ubuntu
-sudo apt-get update
-sudo apt-get install -y libreoffice ghostscript qpdf poppler-utils ocrmypdf tesseract-ocr tesseract-ocr-eng
-
-# macOS
-brew install qpdf ghostscript poppler ocrmypdf tesseract
-brew install --cask libreoffice
-
-# Windows
-# LibreOffice: https://www.libreoffice.org/download/
-# qpdf:        https://github.com/qpdf/qpdf/releases
-# Ghostscript: https://www.ghostscript.com/releases/gsdnld.html
-# Poppler:     install a Poppler build and add its bin folder to PATH
-# Tesseract:   https://github.com/UB-Mannheim/tesseract/wiki
-# OCRmyPDF:    install via Python after Ghostscript, qpdf, Poppler, and Tesseract are available:
-python -m pip install ocrmypdf
+npm install
+npm --prefix server install
+npm --prefix client install
 ```
 
-Native engine coverage:
-
-| Engine | Enables |
-| ------ | ------- |
-| LibreOffice headless | Word/PowerPoint/Excel to PDF; PDF to DOCX/PPTX/XLSX approximations |
-| qpdf | Protect PDF, Unlock PDF, native Repair PDF |
-| Ghostscript | Advanced Compress PDF, PDF/A conversion |
-| Poppler | Native PDF to images, native text extraction |
-| OCRmyPDF/Tesseract | High-quality searchable OCR PDFs |
-
-The frontend checks `/api/capabilities` at startup. If a native engine is missing, the related page shows browser-only mode or setup instructions instead of failing silently.
-
-Backend processing uses secure disk uploads:
-
-- file types are validated by route before processing
-- filenames are sanitized before writing to disk
-- uploads land in `server/uploads/`
-- native tools run in per-job directories under `server/temp/`
-- outputs stream back as downloads
-- upload/temp files are deleted after the response and old files are swept automatically
-- long-running native jobs expose status through `/api/backend/jobs/:id`
-
-## Run (development)
+Run the full development stack:
 
 ```bash
 npm run dev
 ```
 
-This starts the API on **http://localhost:5174** and the client on **http://localhost:5173** (with `/api` proxied to the server).
+Default URLs:
 
-Open <http://localhost:5173>.
+- Client: http://localhost:5173
+- Backend API: http://localhost:5174
 
-## Build & run (production)
+Build everything:
 
 ```bash
 npm run build
-npm start          # runs the compiled server on PORT (default 5174)
-# serve client/dist with any static server (e.g. `npx serve client/dist`)
 ```
 
-## How to use
+Run the compiled backend:
 
-### Image to PDF
-1. Click **Image to PDF** in the sidebar.
-2. Drop images (or click the dropzone). Add as many as you like.
-3. Drag-and-arrow buttons to reorder. Sort A-Z / Z-A if desired.
-4. Pick a page layout. For maximum quality leave it on **Same size as image**.
-5. Choose fit mode, margin, background, and JPEG quality.
-6. Click **Create PDF**. The result downloads to your machine.
+```bash
+npm start
+```
 
-### Crop image
-1. Open **Crop Image**, drop one or many images.
-2. Pick an aspect ratio (Free for unconstrained).
-3. Adjust the `left/top/width/height` numeric inputs (in image pixels).
-4. Choose PNG / JPEG / WEBP and quality.
-5. Click **Download cropped** (single) or **Batch crop N** (multiple → ZIP).
+Serve `client/dist` with any static host for production frontend hosting.
 
-### Merge PDFs
-1. **Merge PDF**, drop 2+ PDFs.
-2. Reorder with the ↑ / ↓ buttons.
-3. **Merge & download** writes a single combined PDF.
+## Backend Dependency Commands
 
-### Split PDF
-1. **Split PDF**, drop one PDF.
-2. Choose **Split every page**, **Extract range**, or **Chunks of N pages**.
-3. Click **Split**. Multi-file outputs come back as a ZIP.
+Install Node backend dependencies:
 
-### PDF page editor
-1. **PDF Page Editor**, drop a PDF.
-2. Pick an operation (Extract / Remove / Reorder / Rotate).
-3. Enter a page range like `1-3,5,8-10`, or a 1-based reorder list like `3,1,2`.
-4. **Apply & download**.
+```bash
+npm --prefix server install
+```
 
-## API reference
+Install optional native engines on Debian/Ubuntu:
 
-All endpoints accept `multipart/form-data` and return either the resulting file as an attachment or JSON.
+```bash
+sudo apt-get update
+sudo apt-get install -y libreoffice ghostscript qpdf poppler-utils ocrmypdf tesseract-ocr tesseract-ocr-eng
+```
 
-| Method | Path                       | Notes |
-| ------ | -------------------------- | ----- |
-| POST   | `/api/images/metadata`     | array `files` → JSON metadata for each |
-| POST   | `/api/images/to-pdf`       | array `files` + options → PDF |
-| POST   | `/api/images/crop`         | single `file` + region → cropped image |
-| POST   | `/api/images/batch-crop`   | array `files` + region → ZIP |
-| POST   | `/api/images/rotate`       | single `file` + angle/flip → PNG |
-| POST   | `/api/pdf/metadata`        | array `files` → JSON |
-| POST   | `/api/pdf/merge`           | array `files` → merged PDF |
-| POST   | `/api/pdf/split`           | single `file` + `kind` → PDF or ZIP |
-| POST   | `/api/pdf/extract`         | single `file` + `range` → PDF |
-| POST   | `/api/pdf/remove-pages`    | single `file` + `range` → PDF |
-| POST   | `/api/pdf/reorder`         | single `file` + `order` → PDF |
-| POST   | `/api/pdf/rotate-pages`    | single `file` + optional `range` + `angle` → PDF |
-| POST   | `/api/backend/pdf/compress` | single PDF + `preset` (`screen`, `ebook`, `printer`, `prepress`) → PDF |
-| POST   | `/api/backend/pdf/repair` | single PDF → repaired PDF via qpdf |
-| POST   | `/api/backend/pdf/to-images` | single PDF + `format`, `dpi`, optional `firstPage`/`lastPage` → ZIP |
-| POST   | `/api/backend/pdf/extract-text` | single PDF + optional `layout` → TXT |
-| POST   | `/api/backend/pdf/ocr` | single PDF + `language` → searchable PDF via OCRmyPDF |
-| GET    | `/api/backend/jobs/:id` | JSON status for a backend job |
-| GET    | `/api/backend/capabilities` | force-refresh native engine capabilities |
-| GET    | `/api/health`              | health check |
-| DELETE | `/api/temp/cleanup`        | wipe temp/upload/output dirs |
+Install optional native engines on macOS:
 
-### Page range syntax
+```bash
+brew install qpdf ghostscript poppler ocrmypdf tesseract
+brew install --cask libreoffice
+```
 
-- `1-5` → pages 1 through 5
-- `1,3,7` → pages 1, 3, and 7
-- `2-4,8,10-12` → mixed
-- 1-based, validated, out-of-range entries are clamped/ignored.
+Install OCRmyPDF with Python when package-manager installation is not available:
 
-## Privacy
+```bash
+python -m pip install ocrmypdf
+```
 
-All processing happens on your local machine. There are no third-party calls. Uploads are stored under `server/uploads/`, results under `server/outputs/`, and both directories are wiped one hour after the file's last modification time (see `server/src/services/cleanupService.ts`). You can also wipe them manually from **Settings → Clear temp files**.
+Windows native engine setup is installer-based:
 
-## Limits
+- LibreOffice: https://www.libreoffice.org/download/
+- qpdf: https://github.com/qpdf/qpdf/releases
+- Ghostscript: https://www.ghostscript.com/releases/gsdnld.html
+- Poppler: install a Windows build and add its `bin` folder to `PATH`
+- Tesseract: https://github.com/UB-Mannheim/tesseract/wiki
+- OCRmyPDF: install with Python after Ghostscript, qpdf, Poppler, and Tesseract are available
 
-- Per image upload: 200 MB
-- Per PDF upload: 500 MB
-- Files per request: 500 for images, 100 for PDFs
-- These are configurable in `server/src/services/fileService.ts`.
+## Libraries
 
-## Troubleshooting
+Frontend:
 
-- **`sharp` install fails** - install build tools or libvips, or use Node 20.
-- **CORS / connection refused** - make sure both `client` and `server` are running (use `npm run dev`).
-- **Large PDFs** - using `Same size as image` with hundreds of high-res photos can produce very large PDFs. Switch to A4 + Fit to reduce size.
-- **WEBP / TIFF output looks different** - the toolkit transcodes to PNG (if alpha) or high-quality JPEG before embedding into the PDF.
+- React 18
+- Vite
+- TypeScript
+- Tailwind CSS
+- react-router-dom
+- react-dropzone
+- lucide-react
+- pdf-lib
+- pdfjs-dist
+- html2canvas
+- jszip
+- file-saver
+- react-easy-crop
+- Konva and react-konva
+- pptxgenjs
+- tesseract.js
 
-## Future improvements
+Backend:
 
-- Client-side previews of generated PDF
-- True visual crop rectangle drag handles
-- OCR / searchable PDF
-- Compression presets
-- Drag-to-reorder using HTML5 DnD
-- Cancel-in-flight via `AbortController`
+- Node.js
+- Express
+- TypeScript
+- multer
+- cors
+- pdf-lib
+- sharp
+- archiver
+- tsx
 
-## License
+Optional native engines:
 
-MIT
+- LibreOffice
+- Ghostscript
+- qpdf
+- Poppler
+- OCRmyPDF
+- Tesseract
+
+## Limitations
+
+- Browser tools are limited by the user's device memory, CPU, canvas limits, and browser file handling.
+- Some browser PDF operations rasterize output, which can remove selectable text.
+- Browser compression is intentionally conservative compared with Ghostscript.
+- Office conversion quality depends on LibreOffice compatibility with the source document.
+- PDF to Office conversion is approximate and depends on source structure.
+- Password removal is only for PDFs the user owns and can unlock.
+- Recent files history stores metadata only, not file bytes.
+- Batch queue history is session-scoped and not a background worker system.
+- Large bundles are expected because PDF rendering, OCR, editing, and conversion libraries are included in the browser app.
+
+## Future Roadmap
+
+- Code-splitting by tool route to reduce initial bundle size.
+- Persistent background job history for backend jobs.
+- More visual before/after previews for watermark, redact, repair, and OCR.
+- Backend upload-size and retention controls exposed in Settings.
+- Drag-and-drop queue reordering for batch jobs.
+- More advanced PDF text reconstruction for PDF to Word/PowerPoint/Excel.
+- Optional cloud or LAN deployment templates.
+- Automated end-to-end regression suite with sample PDFs and images.
+
+## Verification
+
+Current verified commands:
+
+```bash
+npm run build
+```
+
+The build compiles the server and client successfully. Vite may warn that the PDF/OCR/editor bundle is large; that is not a build failure.

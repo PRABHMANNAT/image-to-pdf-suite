@@ -17,6 +17,7 @@ import { useCapabilities } from '../lib/capabilities';
 import { postBackendPdf } from '../lib/backendPdf';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
+import { getQualityPreset, QUALITY_PRESETS, type OutputQualityPreset } from '../lib/qualityPresets';
 
 type Scale = 1 | 2 | 3 | 4;
 type Format = 'image/jpeg' | 'image/png' | 'image/webp';
@@ -48,6 +49,7 @@ export default function PdfToJpg() {
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const file = files[0] ?? null;
   const [engine, setEngine] = useState<EngineMode>('browser');
+  const [qualityPreset, setQualityPreset] = useState<OutputQualityPreset>('balanced');
   const [scale, setScale] = useState<Scale>(2);
   const [format, setFormat] = useState<Format>('image/jpeg');
   const [quality, setQuality] = useState(0.92);
@@ -84,6 +86,13 @@ export default function PdfToJpg() {
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
+
+  useEffect(() => {
+    if (qualityPreset === 'custom') return;
+    const preset = getQualityPreset(qualityPreset);
+    setQuality(preset.jpegQuality);
+    setScale((preset.dpi >= 260 ? 4 : preset.dpi >= 190 ? 3 : preset.dpi >= 130 ? 2 : 1) as Scale);
+  }, [qualityPreset]);
 
   const popplerAvailable = caps.status === 'ready' && caps.caps.poppler.available;
   useEffect(() => {
@@ -311,13 +320,40 @@ export default function PdfToJpg() {
           </div>
 
           <div className="border-t border-slate-200 dark:border-white/10 pt-3">
+            <h3 className="text-sm font-semibold">Output quality</h3>
+            <div className="mt-2 grid grid-cols-1 gap-1.5">
+              {QUALITY_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setQualityPreset(preset.id)}
+                  className={cn(
+                    'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
+                    qualityPreset === preset.id
+                      ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
+                      : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
+                  )}
+                >
+                  {preset.label}
+                  <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                    {preset.description}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 dark:border-white/10 pt-3">
             <h3 className="text-sm font-semibold">Scale</h3>
             <div className="mt-2 grid grid-cols-1 gap-1.5">
               {([1, 2, 3, 4] as Scale[]).map((s) => (
                 <button
                   key={s}
                   type="button"
-                  onClick={() => setScale(s)}
+                  onClick={() => {
+                    setQualityPreset('custom');
+                    setScale(s);
+                  }}
                   className={cn(
                     'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
                     scale === s
@@ -362,7 +398,10 @@ export default function PdfToJpg() {
                   max={1}
                   step={0.01}
                   value={quality}
-                  onChange={(e) => setQuality(Number(e.target.value))}
+                  onChange={(e) => {
+                    setQualityPreset('custom');
+                    setQuality(Number(e.target.value));
+                  }}
                   className="w-full accent-brand-600"
                 />
               </label>

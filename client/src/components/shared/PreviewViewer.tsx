@@ -21,6 +21,9 @@ import {
   PREVIEW_ZOOM_STEP,
 } from '../../lib/constants';
 import { useSettings } from '../../lib/settings';
+import { Tooltip } from '../ui/Tooltip';
+import { EmptyState } from './EmptyState';
+import { PreviewSkeleton } from './LoadingSkeleton';
 
 type Source = File | Blob | string;
 
@@ -181,58 +184,72 @@ export function PreviewViewer({ source, type = 'auto', initialPage = 1, password
       )}
     >
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-slate-200/80 dark:border-white/10 bg-white/70 dark:bg-white/5">
-        <button
-          type="button"
-          className="btn-ghost px-2 py-1"
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={!canPrev}
-          aria-label="Previous page"
-        >
-          <ChevronLeft size={14} />
-        </button>
+        <Tooltip label="Previous page" side="bottom">
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={!canPrev}
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={14} />
+          </button>
+        </Tooltip>
         <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300 min-w-[3rem] text-center">
           {detected === 'pdf' && pageCount > 0 ? `${page} / ${pageCount}` : '—'}
         </span>
-        <button
-          type="button"
-          className="btn-ghost px-2 py-1"
-          onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-          disabled={!canNext}
-          aria-label="Next page"
-        >
-          <ChevronRight size={14} />
-        </button>
+        <Tooltip label="Next page" side="bottom">
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1"
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            disabled={!canNext}
+            aria-label="Next page"
+          >
+            <ChevronRight size={14} />
+          </button>
+        </Tooltip>
         <div className="w-px h-5 bg-slate-200/80 dark:bg-white/10 mx-1" />
-        <button type="button" className="btn-ghost px-2 py-1" onClick={zoomOut} aria-label="Zoom out">
-          <ZoomOut size={14} />
-        </button>
+        <Tooltip label="Zoom out" side="bottom">
+          <button type="button" className="btn-ghost px-2 py-1" onClick={zoomOut} aria-label="Zoom out">
+            <ZoomOut size={14} />
+          </button>
+        </Tooltip>
         <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300 min-w-[3rem] text-center">
           {Math.round(zoom * 100)}%
         </span>
-        <button type="button" className="btn-ghost px-2 py-1" onClick={zoomIn} aria-label="Zoom in">
-          <ZoomIn size={14} />
-        </button>
+        <Tooltip label="Zoom in" side="bottom">
+          <button type="button" className="btn-ghost px-2 py-1" onClick={zoomIn} aria-label="Zoom in">
+            <ZoomIn size={14} />
+          </button>
+        </Tooltip>
         <div className="w-px h-5 bg-slate-200/80 dark:bg-white/10 mx-1" />
-        <button type="button" className="btn-ghost px-2 py-1" onClick={rotate} aria-label="Rotate">
-          <RotateCw size={14} />
-        </button>
+        <Tooltip label="Rotate preview" side="bottom">
+          <button type="button" className="btn-ghost px-2 py-1" onClick={rotate} aria-label="Rotate">
+            <RotateCw size={14} />
+          </button>
+        </Tooltip>
         <div className="ml-auto" />
-        <button
-          type="button"
-          className="btn-ghost px-2 py-1"
-          onClick={enterFullscreen}
-          aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-        >
-          {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-        </button>
+        <Tooltip label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'} side="bottom">
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1"
+            onClick={enterFullscreen}
+            aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            {fullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
+        </Tooltip>
       </div>
 
-      <div className="flex-1 overflow-auto thin-scroll p-4 grid place-items-center bg-slate-50 dark:bg-slate-950/40">
+      <div className="relative flex-1 overflow-auto thin-scroll p-4 grid place-items-center bg-slate-50 dark:bg-slate-950/40">
         {!source && (
-          <div className="text-center text-slate-400 dark:text-slate-500">
-            <ImageIcon size={32} className="mx-auto mb-2 opacity-60" />
-            <p className="text-xs">No file selected yet.</p>
-          </div>
+          <EmptyState
+            icon={ImageIcon}
+            title="No preview yet"
+            description="Drop a file or run the tool to see the preview here."
+            className="w-full max-w-md"
+          />
         )}
         {source && detected === 'image' && imageUrl && (
           <img
@@ -260,8 +277,8 @@ export function PreviewViewer({ source, type = 'auto', initialPage = 1, password
           </div>
         )}
         {busy && (
-          <div className="absolute top-3 right-3 text-[11px] uppercase tracking-wider rounded-md bg-slate-900/80 text-white px-2 py-1">
-            Loading…
+          <div className="absolute inset-4 grid place-items-center rounded-xl bg-white/70 backdrop-blur-sm dark:bg-slate-950/60">
+            <PreviewSkeleton className="w-full max-w-sm" />
           </div>
         )}
       </div>

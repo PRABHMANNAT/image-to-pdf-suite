@@ -1,9 +1,12 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Loader2, Play, X, RotateCcw, CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { ProgressBar } from './ProgressBar';
 import { ProcessingState, AcceptedFile } from './types';
 import { humanSize } from '../../lib/fileUtils';
+import { useBatchQueue } from '../../lib/batchQueue';
+import { TOOLS } from '../../lib/tools';
 
 interface Props {
   /** Selected files (rendered as a count badge — the file queue itself lives in FileDropzone). */
@@ -44,6 +47,52 @@ export function ProcessingPanel({
   indeterminate,
 }: Props) {
   const totalSize = files ? files.reduce((n, f) => n + f.file.size, 0) : 0;
+  const location = useLocation();
+  const { enqueue, update } = useBatchQueue();
+  const queueIdRef = useRef<string | null>(null);
+  const tool = TOOLS.find((item) => item.route === location.pathname);
+
+  useEffect(() => {
+    const id = queueIdRef.current;
+    if (!id) return;
+    update(id, {
+      state,
+      progress,
+      message: error || message,
+    });
+    if (state === 'idle') queueIdRef.current = null;
+  }, [error, message, progress, state, update]);
+
+  function handleAction(): void {
+    if (!onAction) return;
+    queueIdRef.current = enqueue({
+      label: tool ? `${tool.name}: ${actionLabel}` : actionLabel,
+      route: location.pathname,
+      fileCount: files?.length || 0,
+      totalSize,
+      state: 'processing',
+      progress: 0,
+      message: 'Queued',
+    });
+    void onAction();
+  }
+
+  useEffect(() => {
+    if (!onAction || actionDisabled || state === 'processing' || state === 'success') return;
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const isTyping = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT';
+      if (isTyping) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleAction();
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // handleAction intentionally captures the latest processing panel props.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [actionDisabled, onAction, state]);
 
   return (
     <section className={cn('card space-y-4', className)}>
@@ -100,7 +149,7 @@ export function ProcessingPanel({
           <button
             type="button"
             className="btn-primary"
-            onClick={onAction}
+            onClick={handleAction}
             disabled={actionDisabled}
           >
             <Play size={14} /> {actionLabel}

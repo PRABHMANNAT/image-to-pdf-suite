@@ -21,6 +21,7 @@ import { PageSizeId, PAGE_SIZES_MM } from '../lib/constants';
 import { applyNamePattern } from '../lib/fileUtils';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
+import { getQualityPreset, QUALITY_PRESETS, type OutputQualityPreset } from '../lib/qualityPresets';
 
 interface ToolState {
   pageSize: PageSizeId;
@@ -32,7 +33,8 @@ interface ToolState {
   fit: FitMode;
   backgroundPreset: 'white' | 'black' | 'custom';
   backgroundHex: string;
-  quality: 'high' | 'original' | 'compressed';
+  qualityPreset: OutputQualityPreset;
+  customQuality: number;
   layout: LayoutMode;
 }
 
@@ -41,12 +43,6 @@ const MARGIN_PRESETS: Record<ToolState['marginPreset'], number> = {
   small: 5,
   medium: 15,
   custom: 0,
-};
-
-const QUALITY_TO_JPEG: Record<ToolState['quality'], number> = {
-  high: 95,
-  original: 100,
-  compressed: 70,
 };
 
 interface ImageToPdfProps {
@@ -82,7 +78,8 @@ export default function ImageToPdf({ toolId = 'image-to-pdf' }: ImageToPdfProps 
     fit: 'contain',
     backgroundPreset: 'white',
     backgroundHex: '#ffffff',
-    quality: 'high',
+    qualityPreset: 'maximum',
+    customQuality: 100,
     layout: 'single',
   }));
 
@@ -151,7 +148,10 @@ export default function ImageToPdf({ toolId = 'image-to-pdf' }: ImageToPdfProps 
       marginMm: opts.marginMm,
       fit: opts.fit,
       backgroundHex: opts.backgroundHex,
-      jpegQuality: QUALITY_TO_JPEG[opts.quality],
+      jpegQuality:
+        opts.qualityPreset === 'custom'
+          ? opts.customQuality
+          : Math.round(getQualityPreset(opts.qualityPreset).jpegQuality * 100),
       layout: opts.layout,
     };
 
@@ -376,26 +376,42 @@ export default function ImageToPdf({ toolId = 'image-to-pdf' }: ImageToPdfProps 
           </div>
 
           <div className="border-t border-slate-200 dark:border-white/10 pt-4">
-            <h3 className="text-sm font-semibold">Quality</h3>
-            <div className="mt-2 flex gap-1.5">
-              {(['high', 'original', 'compressed'] as const).map((q) => (
+            <h3 className="text-sm font-semibold">Output quality</h3>
+            <div className="mt-2 grid grid-cols-1 gap-1.5">
+              {QUALITY_PRESETS.map((preset) => (
                 <button
-                  key={q}
+                  key={preset.id}
                   type="button"
-                  onClick={() => setOpts({ ...opts, quality: q })}
+                  onClick={() => setOpts({ ...opts, qualityPreset: preset.id })}
                   className={cn(
-                    'flex-1 px-2 py-1.5 rounded-md text-xs font-medium border transition capitalize',
-                    opts.quality === q
+                    'px-3 py-2 rounded-lg text-left text-xs font-semibold border transition',
+                    opts.qualityPreset === preset.id
                       ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 border-brand-500/40'
                       : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
                   )}
                 >
-                  {q}
+                  {preset.label}
+                  <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                    {preset.description}
+                  </span>
                 </button>
               ))}
             </div>
+            {opts.qualityPreset === 'custom' && (
+              <label className="mt-3 block">
+                <span className="label">JPEG quality ({opts.customQuality}%)</span>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  value={opts.customQuality}
+                  onChange={(e) => setOpts({ ...opts, customQuality: Number(e.target.value) })}
+                  className="w-full accent-brand-600"
+                />
+              </label>
+            )}
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-              JPG/PNG bytes pass through unchanged for high/original.
+              Native JPG and PNG bytes are preserved when possible; this controls re-encoded formats.
             </p>
           </div>
 

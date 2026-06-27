@@ -3,15 +3,13 @@ import { Minimize2, Info, Server, CheckCircle2, AlertTriangle } from 'lucide-rea
 import {
   ToolLayout,
   FileDropzone,
-  PreviewViewer,
   ProcessingPanel,
   DownloadResult,
+  BeforeAfterPreview,
 } from '../components/shared';
 import type { AcceptedFile, ProcessingState, ToolResult } from '../components/shared';
 import {
   CompressPreset,
-  PRESET_LABEL,
-  PRESET_RASTERISE,
   compressPdf,
 } from '../lib/pdfCompress';
 import { applyNamePattern, humanSize } from '../lib/fileUtils';
@@ -20,6 +18,7 @@ import { useCapabilities } from '../lib/capabilities';
 import { postBackendPdf } from '../lib/backendPdf';
 import { findTool } from '../lib/tools';
 import { cn } from '../lib/cn';
+import { getQualityPreset, QUALITY_PRESETS, type OutputQualityPreset } from '../lib/qualityPresets';
 
 type EngineMode = 'backend' | 'browser';
 type GsPreset = 'screen' | 'ebook' | 'printer' | 'prepress';
@@ -32,7 +31,7 @@ export default function CompressPdf() {
   const file = files[0] ?? null;
   const [engine, setEngine] = useState<EngineMode>('browser');
   const [gsPreset, setGsPreset] = useState<GsPreset>('ebook');
-  const [preset, setPreset] = useState<CompressPreset>('medium');
+  const [qualityPreset, setQualityPreset] = useState<OutputQualityPreset>('balanced');
   const [lossless, setLossless] = useState(false);
   const [customDpi, setCustomDpi] = useState(150);
   const [customQuality, setCustomQuality] = useState(0.78);
@@ -61,13 +60,13 @@ export default function CompressPdf() {
     // Very rough heuristic for the "estimated size" hint — true size is only
     // known once we actually compress. We just give the user a ballpark.
     if (!originalSize) return null;
-    if (lossless || preset === 'low') return originalSize * 0.85;
-    if (preset === 'medium') return originalSize * 0.45;
-    if (preset === 'high') return originalSize * 0.22;
+    if (lossless || qualityPreset === 'maximum') return originalSize * 0.85;
+    if (qualityPreset === 'balanced') return originalSize * 0.45;
+    if (qualityPreset === 'small') return originalSize * 0.22;
     // custom: estimate from DPI + quality
     const dpiFactor = Math.min(1, customDpi / 200);
     return originalSize * Math.max(0.1, dpiFactor * customQuality);
-  }, [originalSize, preset, lossless, customDpi, customQuality]);
+  }, [originalSize, qualityPreset, lossless, customDpi, customQuality]);
 
   async function run(): Promise<void> {
     if (!file) return;
@@ -90,9 +89,23 @@ export default function CompressPdf() {
           },
         });
       } else {
+        const mappedPreset: CompressPreset =
+          qualityPreset === 'maximum'
+            ? 'low'
+            : qualityPreset === 'balanced'
+              ? 'medium'
+              : qualityPreset === 'small'
+                ? 'high'
+                : 'custom';
+        const selected = getQualityPreset(qualityPreset);
         blob = await compressPdf(
           file.file,
-          { preset, lossless, customDpi, customQuality },
+          {
+            preset: mappedPreset,
+            lossless,
+            customDpi: qualityPreset === 'custom' ? customDpi : selected.dpi,
+            customQuality: qualityPreset === 'custom' ? customQuality : selected.jpegQuality,
+          },
           (info) => {
             setProgress(info.pct);
             if (info.message) setMessage(info.message);
@@ -191,11 +204,14 @@ export default function CompressPdf() {
               </p>
             </section>
           )}
-          {previewBlob && (
-            <section>
-              <h3 className="text-sm font-semibold mb-2">Compressed PDF preview</h3>
-              <PreviewViewer source={previewBlob} type="pdf" />
-            </section>
+          {file && previewBlob && (
+            <BeforeAfterPreview
+              before={file.file}
+              after={previewBlob}
+              type="pdf"
+              beforeLabel="Original PDF"
+              afterLabel="Compressed PDF"
+            />
           )}
         </div>
       }
@@ -248,32 +264,30 @@ export default function CompressPdf() {
           {engine === 'browser' && (
             <>
           <div>
-            <h3 className="text-sm font-semibold">Compression preset</h3>
+            <h3 className="text-sm font-semibold">Output quality</h3>
             <div className="mt-2 grid grid-cols-1 gap-1.5">
-              {(Object.keys(PRESET_LABEL) as CompressPreset[]).map((p) => (
+              {QUALITY_PRESETS.map((p) => (
                 <button
-                  key={p}
+                  key={p.id}
                   type="button"
-                  onClick={() => setPreset(p)}
+                  onClick={() => setQualityPreset(p.id)}
                   className={cn(
                     'px-3 py-2 rounded-lg border text-left text-xs font-semibold transition',
-                    preset === p
+                    qualityPreset === p.id
                       ? 'bg-brand-50 dark:bg-brand-500/15 border-brand-500/40 text-brand-700 dark:text-brand-300 shadow-glow'
                       : 'border-slate-200 dark:border-white/10 hover:border-brand-500/40',
                   )}
                 >
-                  {PRESET_LABEL[p]}
-                  {p !== 'custom' && (
-                    <span className="ml-2 text-[10px] text-slate-500 dark:text-slate-400 font-normal">
-                      {PRESET_RASTERISE[p].dpi} dpi · q{Math.round(PRESET_RASTERISE[p].quality * 100)}
-                    </span>
-                  )}
+                  {p.label}
+                  <span className="block text-[11px] font-normal text-slate-500 dark:text-slate-400">
+                    {p.description}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
 
-          {preset === 'custom' && (
+          {qualityPreset === 'custom' && (
             <div className="space-y-2">
               <label className="block">
                 <span className="label">Render DPI ({customDpi})</span>

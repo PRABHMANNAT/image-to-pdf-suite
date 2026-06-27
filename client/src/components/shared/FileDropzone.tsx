@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone, FileRejection } from 'react-dropzone';
+import { useLocation } from 'react-router-dom';
 import {
   UploadCloud,
   FileText,
@@ -21,6 +22,7 @@ import {
 } from '../../lib/validationUtils';
 import { renderPdfFirstPageDataUrl } from '../../lib/pdfUtils';
 import { MAX_FILE_SIZE_DEFAULT } from '../../lib/constants';
+import { recordRecentFiles } from '../../lib/recentFiles';
 import { AcceptedFile, DropError } from './types';
 
 interface Props {
@@ -64,6 +66,7 @@ export function FileDropzone({
 }: Props) {
   const [errors, setErrors] = useState<DropError[]>([]);
   const filesRef = useRef(files);
+  const location = useLocation();
   filesRef.current = files;
 
   // Generate PDF thumbnails lazily once a file lands in the queue.
@@ -119,9 +122,10 @@ export function FileDropzone({
 
       if (!accepted.length) return;
       const additions = accepted.map(makeAccepted);
+      recordRecentFiles(accepted, location.pathname);
       onChange(multiple ? [...filesRef.current, ...additions] : additions.slice(-1));
     },
-    [accept, maxFiles, maxSize, multiple, onChange],
+    [accept, location.pathname, maxFiles, maxSize, multiple, onChange],
   );
 
   // Auto-dismiss error block after a few seconds.

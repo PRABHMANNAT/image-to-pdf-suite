@@ -4,10 +4,10 @@ import { Crop } from 'lucide-react';
 import {
   ToolLayout,
   FileDropzone,
-  PreviewViewer,
   ProcessingPanel,
   DownloadResult,
   ImageCropper,
+  BeforeAfterPreview,
 } from '../components/shared';
 import type { AcceptedFile, ProcessingState, ToolResult } from '../components/shared';
 import { renderPdfFirstPageDataUrl, loadPdfLib, savePdfLib } from '../lib/pdfUtils';
@@ -201,11 +201,14 @@ export default function CropPdf() {
               Drop a PDF above to start cropping.
             </div>
           )}
-          {previewBlob && (
-            <section>
-              <h3 className="text-sm font-semibold mb-2">Cropped PDF preview</h3>
-              <PreviewViewer source={previewBlob} type="pdf" />
-            </section>
+          {file && previewBlob && (
+            <BeforeAfterPreview
+              before={file.file}
+              after={previewBlob}
+              type="pdf"
+              beforeLabel="Original PDF"
+              afterLabel="Cropped PDF"
+            />
           )}
         </div>
       }

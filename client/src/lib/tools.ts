@@ -113,7 +113,7 @@ export const TOOLS: Tool[] = [
   { id: 'html-to-pdf', name: 'HTML to PDF', description: 'Paste or upload HTML and render it to PDF locally.', route: '/tools/html-to-pdf', category: 'convert-to', icon: Globe, runtime: 'browser', status: 'beta' },
 
   // Convert from PDF
-  { id: 'pdf-to-jpg', name: 'PDF to JPG', description: 'Render each PDF page to a JPG image.', route: '/tools/pdf-to-jpg', category: 'convert-from', icon: FileImage, runtime: 'browser', status: 'coming-soon' },
+  { id: 'pdf-to-jpg', name: 'PDF to JPG', description: 'Render each PDF page to a high-quality JPG / PNG / WEBP image.', route: '/tools/pdf-to-jpg', category: 'convert-from', icon: FileImage, runtime: 'browser', status: 'ready' },
   { id: 'pdf-to-word', name: 'PDF to Word', description: 'Extract PDF content into an editable .docx.', route: '/tools/pdf-to-word', category: 'convert-from', icon: FileType, runtime: 'backend', status: 'coming-soon' },
   { id: 'pdf-to-ppt', name: 'PDF to PowerPoint', description: 'Convert PDF pages into a .pptx deck.', route: '/tools/pdf-to-ppt', category: 'convert-from', icon: Presentation, runtime: 'backend', status: 'coming-soon' },
   { id: 'pdf-to-excel', name: 'PDF to Excel', description: 'Pull tables out of PDFs into a spreadsheet.', route: '/tools/pdf-to-excel', category: 'convert-from', icon: Sheet, runtime: 'backend', status: 'coming-soon' },

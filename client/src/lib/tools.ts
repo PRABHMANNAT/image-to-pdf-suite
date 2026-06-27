@@ -129,7 +129,7 @@ export const TOOLS: Tool[] = [
 
   // PDF Security
   { id: 'unlock-pdf', name: 'Unlock PDF', description: 'Remove the password from a PDF you own.', route: '/tools/unlock-pdf', category: 'security', icon: LockOpen, runtime: 'hybrid', status: 'coming-soon' },
-  { id: 'protect-pdf', name: 'Protect PDF', description: 'Encrypt a PDF with a password.', route: '/tools/protect-pdf', category: 'security', icon: Lock, runtime: 'browser', status: 'coming-soon' },
+  { id: 'protect-pdf', name: 'Protect PDF', description: 'Encrypt with 256-bit AES via qpdf — set passwords and restrict print/copy/edit.', route: '/tools/protect-pdf', category: 'security', icon: Lock, runtime: 'backend', status: 'beta' },
   { id: 'sign-pdf', name: 'Sign PDF', description: 'Place a typed, drawn or image signature.', route: '/tools/sign-pdf', category: 'security', icon: PenLine, runtime: 'browser', status: 'coming-soon' },
   { id: 'redact-pdf', name: 'Redact PDF', description: 'Permanently black-out sensitive areas.', route: '/tools/redact-pdf', category: 'security', icon: EyeOff, runtime: 'browser', status: 'coming-soon' },
   { id: 'compare-pdf', name: 'Compare PDF', description: 'Diff two PDFs side-by-side.', route: '/tools/compare-pdf', category: 'security', icon: GitCompareArrows, runtime: 'browser', status: 'coming-soon' },

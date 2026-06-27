@@ -35,6 +35,7 @@ import AddWatermark from './pages/AddWatermark';
 import CropPdf from './pages/CropPdf';
 import EditPdf from './pages/EditPdf';
 import PdfForms from './pages/PdfForms';
+import ProtectPdf from './pages/ProtectPdf';
 
 export default function App() {
   return (
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="/tools/crop-pdf" element={<CropPdf />} />
             <Route path="/tools/edit-pdf" element={<EditPdf />} />
             <Route path="/tools/pdf-forms" element={<PdfForms />} />
+            <Route path="/tools/protect-pdf" element={<ProtectPdf />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 
             {/* Catch-all tool route — renders the placeholder for any coming-soon tool. */}

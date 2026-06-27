@@ -25,6 +25,7 @@ import OcrPdf from './pages/OcrPdf';
 import OfficeToPdf from './pages/OfficeToPdf';
 import HtmlToPdf from './pages/HtmlToPdf';
 import PdfToJpg from './pages/PdfToJpg';
+import PdfToWord from './pages/PdfToWord';
 
 export default function App() {
   return (
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/tools/excel-to-pdf" element={<OfficeToPdf toolId="excel-to-pdf" />} />
             <Route path="/tools/html-to-pdf" element={<HtmlToPdf />} />
             <Route path="/tools/pdf-to-jpg" element={<PdfToJpg />} />
+            <Route path="/tools/pdf-to-word" element={<PdfToWord />} />
             <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 

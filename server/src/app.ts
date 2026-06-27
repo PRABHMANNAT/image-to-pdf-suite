@@ -2,6 +2,7 @@ import express, { ErrorRequestHandler } from 'express';
 import cors from 'cors';
 import imagesRouter from './routes/images';
 import pdfRouter from './routes/pdf';
+import pdfConvertRouter from './routes/pdfConvert';
 import utilityRouter from './routes/utility';
 import officeRouter from './routes/office';
 import capabilitiesRouter from './routes/capabilities';
@@ -19,6 +20,7 @@ export function createApp() {
 
   app.use('/api/images', imagesRouter);
   app.use('/api/pdf', pdfRouter);
+  app.use('/api/pdf', pdfConvertRouter);
   app.use('/api/office', officeRouter);
   app.use('/api', capabilitiesRouter);
   app.use('/api', utilityRouter);

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { checkLibreOffice } from '../services/officeService';
+import { checkGhostscript } from '../services/ghostscriptService';
 
 // Single endpoint the client polls on boot. Lets the UI know which heavy
 // converters are actually available so backend-only tools can either light up
@@ -8,13 +9,14 @@ import { checkLibreOffice } from '../services/officeService';
 const r = Router();
 
 r.get('/capabilities', async (_req, res) => {
-  const libreoffice = await checkLibreOffice();
+  const [libreoffice, ghostscript] = await Promise.all([
+    checkLibreOffice(),
+    checkGhostscript(),
+  ]);
   res.json({
     libreoffice,
-    // The slots below are reserved for upcoming phases. The client treats
-    // missing keys as "unknown / not detected" so adding them later is
-    // backwards-compatible.
-    ghostscript: { available: false },
+    ghostscript,
+    // Reserved slots — populated in later phases.
     qpdf: { available: false },
     poppler: { available: false },
     tesseract: { available: false },

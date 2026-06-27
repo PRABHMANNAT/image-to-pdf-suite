@@ -98,11 +98,18 @@ export class LibreOfficeMissingError extends Error {
 }
 
 /**
- * Run LibreOffice headless to convert the file at inputPath to PDF. Returns
- * the path of the produced PDF inside a fresh work directory which the caller
- * is responsible for cleaning up (use cleanupService.removeFiles).
+ * Run LibreOffice headless to convert the file at inputPath to the given
+ * target extension (without leading dot). Returns the path of the produced
+ * output file inside a fresh work directory which the caller is responsible
+ * for cleaning up (use cleanupService.removeFiles).
+ *
+ * The same engine drives forwards (anything → pdf) and reverses
+ * (pdf → docx/pptx/xlsx). Layout fidelity matches LibreOffice's own export.
  */
-export async function convertOfficeToPdf(inputPath: string): Promise<string> {
+export async function convertWithLibreOffice(
+  inputPath: string,
+  targetExt: string,
+): Promise<string> {
   const cap = await checkLibreOffice();
   if (!cap.available) throw new LibreOfficeMissingError();
 
@@ -118,15 +125,20 @@ export async function convertOfficeToPdf(inputPath: string): Promise<string> {
 
   const { code, stderr } = await runCmd(
     cap.binary!,
-    [profileUri, '--headless', '--convert-to', 'pdf', '--outdir', workDir, inputPath],
-    120_000,
+    [profileUri, '--headless', '--convert-to', targetExt, '--outdir', workDir, inputPath],
+    180_000,
   );
   if (code !== 0) {
     throw new Error(`LibreOffice failed (exit ${code}): ${stderr.trim() || 'no stderr output'}`);
   }
 
-  const baseName = path.basename(inputPath, path.extname(inputPath)) + '.pdf';
+  const baseName = path.basename(inputPath, path.extname(inputPath)) + '.' + targetExt;
   const outPath = path.join(workDir, baseName);
   await fs.access(outPath); // throws if not produced
   return outPath;
+}
+
+/** Convenience wrapper preserving the older `convertOfficeToPdf(input)` shape. */
+export async function convertOfficeToPdf(inputPath: string): Promise<string> {
+  return convertWithLibreOffice(inputPath, 'pdf');
 }

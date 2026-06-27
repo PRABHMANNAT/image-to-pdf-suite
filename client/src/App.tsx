@@ -29,6 +29,7 @@ import PdfToWord from './pages/PdfToWord';
 import PdfToPpt from './pages/PdfToPpt';
 import PdfToExcel from './pages/PdfToExcel';
 import PdfToPdfA from './pages/PdfToPdfA';
+import RotatePdf from './pages/RotatePdf';
 
 export default function App() {
   return (
@@ -62,7 +63,7 @@ export default function App() {
             <Route path="/tools/pdf-to-ppt" element={<PdfToPpt />} />
             <Route path="/tools/pdf-to-excel" element={<PdfToExcel />} />
             <Route path="/tools/pdf-to-pdfa" element={<PdfToPdfA />} />
-            <Route path="/tools/rotate-pdf" element={<PdfPageEditor />} />
+            <Route path="/tools/rotate-pdf" element={<RotatePdf />} />
             <Route path="/tools/scan-to-pdf" element={<ScanToPdf />} />
 
             {/* Catch-all tool route — renders the placeholder for any coming-soon tool. */}

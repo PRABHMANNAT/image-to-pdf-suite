@@ -110,7 +110,7 @@ export const TOOLS: Tool[] = [
   { id: 'word-to-pdf', name: 'Word to PDF', description: 'Convert .docx documents into PDF via LibreOffice headless.', route: '/tools/word-to-pdf', category: 'convert-to', icon: FileType, runtime: 'backend', status: 'beta' },
   { id: 'ppt-to-pdf', name: 'PowerPoint to PDF', description: 'Convert .pptx decks into PDF via LibreOffice headless.', route: '/tools/ppt-to-pdf', category: 'convert-to', icon: Presentation, runtime: 'backend', status: 'beta' },
   { id: 'excel-to-pdf', name: 'Excel to PDF', description: 'Convert .xlsx workbooks into PDF via LibreOffice headless.', route: '/tools/excel-to-pdf', category: 'convert-to', icon: Sheet, runtime: 'backend', status: 'beta' },
-  { id: 'html-to-pdf', name: 'HTML to PDF', description: 'Render an HTML page or URL into PDF.', route: '/tools/html-to-pdf', category: 'convert-to', icon: Globe, runtime: 'browser', status: 'coming-soon' },
+  { id: 'html-to-pdf', name: 'HTML to PDF', description: 'Paste or upload HTML and render it to PDF locally.', route: '/tools/html-to-pdf', category: 'convert-to', icon: Globe, runtime: 'browser', status: 'beta' },
 
   // Convert from PDF
   { id: 'pdf-to-jpg', name: 'PDF to JPG', description: 'Render each PDF page to a JPG image.', route: '/tools/pdf-to-jpg', category: 'convert-from', icon: FileImage, runtime: 'browser', status: 'coming-soon' },

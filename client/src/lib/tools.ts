@@ -106,7 +106,7 @@ export const TOOLS: Tool[] = [
   { id: 'ocr-pdf', name: 'OCR PDF', description: 'Make scanned PDFs searchable with on-device OCR.', route: '/tools/ocr-pdf', category: 'optimize', icon: ScanText, runtime: 'hybrid', status: 'beta' },
 
   // Convert to PDF
-  { id: 'jpg-to-pdf', name: 'JPG to PDF', description: 'Convert JPG images into a PDF document.', route: '/tools/jpg-to-pdf', category: 'convert-to', icon: FileImage, runtime: 'browser', status: 'ready' },
+  { id: 'jpg-to-pdf', name: 'JPG to PDF', description: 'Combine JPG images (and PNG/WEBP) into a single PDF — same engine as Image to PDF.', route: '/tools/jpg-to-pdf', category: 'convert-to', icon: FileImage, runtime: 'browser', status: 'ready' },
   { id: 'word-to-pdf', name: 'Word to PDF', description: 'Convert .docx documents into PDF via LibreOffice headless.', route: '/tools/word-to-pdf', category: 'convert-to', icon: FileType, runtime: 'backend', status: 'beta' },
   { id: 'ppt-to-pdf', name: 'PowerPoint to PDF', description: 'Convert .pptx decks into PDF via LibreOffice headless.', route: '/tools/ppt-to-pdf', category: 'convert-to', icon: Presentation, runtime: 'backend', status: 'beta' },
   { id: 'excel-to-pdf', name: 'Excel to PDF', description: 'Convert .xlsx workbooks into PDF via LibreOffice headless.', route: '/tools/excel-to-pdf', category: 'convert-to', icon: Sheet, runtime: 'backend', status: 'beta' },

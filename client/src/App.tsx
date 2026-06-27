@@ -37,8 +37,8 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
 
             {/* Working tools — wired to their existing implementations. */}
-            <Route path="/tools/image-to-pdf" element={<ImageToPdf />} />
-            <Route path="/tools/jpg-to-pdf" element={<ImageToPdf />} />
+            <Route path="/tools/image-to-pdf" element={<ImageToPdf toolId="image-to-pdf" />} />
+            <Route path="/tools/jpg-to-pdf" element={<ImageToPdf toolId="jpg-to-pdf" />} />
             <Route path="/tools/crop-image" element={<CropImage />} />
             <Route path="/tools/merge-pdf" element={<MergePdf />} />
             <Route path="/tools/split-pdf" element={<SplitPdf />} />

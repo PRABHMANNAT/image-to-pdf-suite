@@ -49,8 +49,13 @@ const QUALITY_TO_JPEG: Record<ToolState['quality'], number> = {
   compressed: 70,
 };
 
-export default function ImageToPdf() {
-  const tool = findTool('image-to-pdf')!;
+interface ImageToPdfProps {
+  /** Lets the same component back the "Image to PDF" and "JPG to PDF" cards. */
+  toolId?: 'image-to-pdf' | 'jpg-to-pdf';
+}
+
+export default function ImageToPdf({ toolId = 'image-to-pdf' }: ImageToPdfProps = {}) {
+  const tool = findTool(toolId)!;
   const { settings } = useSettings();
   const [files, setFiles] = useState<AcceptedFile[]>([]);
   const [state, setState] = useState<ProcessingState>('idle');
@@ -163,7 +168,7 @@ export default function ImageToPdf() {
       const baseName = files[0]?.file.name || 'images';
       const suggested = applyNamePattern(settings.outputNamePattern, {
         name: baseName,
-        tool: 'image-to-pdf',
+        tool: toolId,
         ext: '.pdf',
       });
       setResult({ kind: 'single', blob, suggestedName: suggested });
